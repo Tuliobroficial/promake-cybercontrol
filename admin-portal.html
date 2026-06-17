@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Portal do Cliente</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#6C5CE7;--bg:#F5F5FA;--bg-card:#FFFFFF;--text:#1A1A2E;--text-muted:#8888AA;--border:#E0E0EC;--success:#00C853;--warning:#FFD600;--danger:#FF1744;--radius:12px;--shadow:0 2px 12px rgba(0,0,0,0.06)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--bg-card);border-radius:var(--radius);padding:40px;width:400px;max-width:100%;border:1px solid var(--border);box-shadow:var(--shadow);text-align:center}
+.login-box .icon{font-size:48px;margin-bottom:16px;color:var(--primary)}
+.login-box h2{font-size:22px;margin-bottom:4px}
+.login-box .sub{color:var(--text-muted);font-size:13px;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;background:var(--bg);color:var(--text)}
+.login-box input:focus{outline:none;border-color:var(--primary)}
+.login-box button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff}
+.login-box button:hover{opacity:0.9}
+.login-box .error{color:var(--danger);font-size:13px;margin-top:8px;display:none}
+.login-loading{display:none;color:var(--text-muted);font-size:13px;margin-top:12px}
+.dashboard{display:none}
+.header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-left h3{font-size:16px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-right button{background:none;border:1px solid var(--border);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text)}
+.header-right button:hover{background:var(--bg)}
+.content{padding:24px;max-width:1200px;margin:0 auto}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+.toolbar-left{display:flex;align-items:center;gap:8px}
+.toolbar-right{display:flex;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.card{background:var(--bg-card);border-radius:var(--radius);padding:20px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.card h4{font-size:13px;color:var(--text-muted);margin-bottom:6px}
+.card .value{font-size:26px;font-weight:700}
+.card .value.green{color:var(--success)}.card .value.red{color:var(--danger)}.card .value.purple{color:var(--primary)}.card .value.orange{color:#FFD600}
+.section{margin-bottom:28px}
+.section h3{font-size:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+tr:hover td{background:var(--bg)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty-state i{font-size:40px;margin-bottom:12px;opacity:0.4}
+.empty-state p{font-size:13px}
+.badge{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.badge.active{background:#E8F5E9;color:#2E7D32}
+.badge.pending{background:#FFF8E1;color:#F57F17}
+.badge.completed{background:#E8F5E9;color:#2E7D32}
+.badge.danger{background:#FFEBEE;color:#C62828}
+.badge.info{background:#E3F2FD;color:#1565C0}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-xs{padding:4px 8px;font-size:11px;border-radius:5px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{opacity:0.9}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{opacity:0.9}
+.btn-success{background:var(--success);color:#fff}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;font-weight:600}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);font-family:inherit}
+.form-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+.form-group textarea{resize:vertical;min-height:50px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg-card);border-radius:var(--radius);padding:28px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);box-shadow:var(--shadow)}
+.modal h3{font-size:18px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
+.toast{position:fixed;top:20px;right:20px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;display:none;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;animation:slideIn .3s ease}
+.toast.show{display:flex}.toast.success i{color:var(--success)}.toast.error i{color:var(--danger)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.loading{text-align:center;padding:40px 20px;color:var(--text-muted)}
+@media(max-width:768px){
+  .content{padding:16px}
+  .header{padding:12px 16px;flex-wrap:wrap;gap:8px}
+  .header-right{gap:8px;flex-wrap:wrap}
+  .header-right a{margin-right:0!important;font-size:12px!important}
+  .form-row{grid-template-columns:1fr}
+  .grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .card .value{font-size:22px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar .btn{width:100%;justify-content:center}
+  .modal{padding:20px;margin:8px}
+  table{font-size:12px}
+  th,td{padding:8px 10px}
+  .section{margin-bottom:20px}
+}
+@media(max-width:480px){
+  .content{padding:12px}
+  .header{padding:10px 12px}
+  .header-left h3{font-size:14px}
+  .grid{grid-template-columns:1fr;gap:10px}
+  .card{padding:14px}
+  .card .value{font-size:20px}
+  .modal{padding:16px;margin:4px}
+  table{font-size:11px}
+  th,td{padding:6px 8px}
+  .btn{padding:8px 16px;font-size:12px}
+  .btn-sm{padding:5px 10px;font-size:11px}
+  .login-box{padding:24px 16px}
+  .login-box h2{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<div class="login-page" id="loginPage">
+  <div class="login-box">
+    <div class="icon"><i class="fas fa-shield-alt"></i></div>
+    <h2 id="loginTitle">Painel Administrativo</h2>
+    <p class="sub" id="loginSubtitle">Acesso restrito ao administrador</p>
+    <input type="password" id="adminPassword" placeholder="Senha de administrador" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()"><i class="fas fa-arrow-right"></i> Entrar</button>
+    <div class="error" id="loginError">Senha incorreta</div>
+    <div class="login-loading" id="loginLoading"><i class="fas fa-spinner fa-spin"></i> Entrando...</div>
+  </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <i class="fas fa-shield-alt" style="color:var(--primary);font-size:20px"></i>
+      <h3 id="adminTitle">Painel Administrativo</h3>
+    </div>
+    <div class="header-right">
+      <a href="/portal/marsan" style="font-size:13px;color:var(--primary);text-decoration:none;margin-right:12px" target="_blank"><i class="fas fa-external-link-alt"></i> Ver Portal</a>
+      <button onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="grid" id="statsGrid"></div>
+
+    <div class="section">
+      <div class="toolbar">
+        <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-building" style="color:var(--primary)"></i> Empreendimentos</h3></div>
+        <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="openDevModal()"><i class="fas fa-plus"></i> Novo</button></div>
+      </div>
+      <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>Construtora</th><th>Status</th><th>Unidades</th><th>Entrega</th><th style="width:100px">Ações</th></tr></thead><tbody id="devsTable"></tbody></table></div></div>
+    </div>
+
+    <div id="devDetail" style="display:none">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn btn-outline btn-sm" onclick="backToDevList()"><i class="fas fa-arrow-left"></i> Voltar</button>
+          <h3 style="margin:0" id="devDetailTitle"></h3>
+        </div>
+        <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="openUnitModal()"><i class="fas fa-plus"></i> Nova Unidade</button></div>
+      </div>
+      <div class="card" style="margin-bottom:16px"><div class="table-container"><table><thead><tr><th>Unidade</th><th>Torre</th><th>Bloco</th><th>Área</th><th>Quartos</th><th>Preço</th><th>Status</th><th style="width:60px">Ações</th></tr></thead><tbody id="unitsTable"></tbody></table></div></div>
+      <div class="card">
+        <h4 style="margin-bottom:12px"><i class="fas fa-users"></i> Corretores com Acesso</h4>
+        <div id="brokerList"></div>
+        <button class="btn btn-outline btn-sm" onclick="openBrokerModal()" style="margin-top:8px"><i class="fas fa-plus"></i> Liberar Corretor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="devModal"><div class="modal">
+  <h3><i class="fas fa-building"></i> <span id="devModalTitle">Novo Empreendimento</span></h3>
+  <input type="hidden" id="devId">
+  <div class="form-group"><label>Nome</label><input type="text" id="devName" placeholder="Ex: Residencial Solar"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Construtora</label><input type="text" id="devBuilder" placeholder="MARSAN"></div>
+    <div class="form-group"><label>Status</label><select id="devStatus"><option value="lançamento">Lançamento</option><option value="obras">Em Obras</option><option value="pronto">Pronto</option></select></div>
+  </div>
+  <div class="form-group"><label>Endereço</label><input type="text" id="devAddress" placeholder="Av. Principal, 1000"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Total de Unidades</label><input type="number" id="devTotalUnits" placeholder="0"></div>
+    <div class="form-group"><label>Previsão de Entrega</label><input type="date" id="devDeliveryDate"></div>
+  </div>
+  <div class="form-group"><label>Descrição</label><textarea id="devDescription" rows="2" placeholder="Descrição..."></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('devModal')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveDev()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="unitModal"><div class="modal">
+  <h3><i class="fas fa-door-open"></i> <span id="unitModalTitle">Nova Unidade</span></h3>
+  <input type="hidden" id="unitId">
+  <div class="form-row">
+    <div class="form-group"><label>Unidade</label><input type="text" id="unitNumber" placeholder="Ex: 101, APT 42"></div>
+    <div class="form-group"><label>Torre</label><input type="text" id="unitTower" placeholder="Ex: A, B, 1"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Bloco</label><input type="text" id="unitBlock" placeholder="Ex: 1, 2"></div>
+    <div class="form-group"><label>Andar</label><input type="text" id="unitFloor" placeholder="Ex: 1, 2"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Área (m²)</label><input type="number" id="unitArea" step="0.01" placeholder="0"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="unitPrice" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Quartos</label><input type="number" id="unitBedrooms" placeholder="0"></div>
+    <div class="form-group"><label>Suítes</label><input type="number" id="unitSuites" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Banheiros</label><input type="number" id="unitBathrooms" placeholder="0"></div>
+    <div class="form-group"><label>Vagas</label><input type="number" id="unitParking" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="unitStatus"><option value="disponivel">Disponível</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+    <div class="form-group"><label>Obs</label><input type="text" id="unitNotes" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('unitModal')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveUnit()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="brokerModal"><div class="modal" style="width:450px">
+  <h3><i class="fas fa-user-plus"></i> Liberar Corretor</h3>
+  <input type="hidden" id="brokerDevId">
+  <div class="form-group"><label>Corretor</label><select id="brokerUser" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)"></select></div>
+  <div class="form-group"><label>Comissão (%)</label><input type="number" id="brokerPct" step="0.1" value="3.0" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text)"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline" onclick="closeModal('brokerModal')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveBroker()"><i class="fas fa-check"></i> Liberar</button>
+  </div>
+</div></div>
+
+<script>
+const API = {
+  baseUrl: window.location.origin,
+  token: '',
+  async request(method, url, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (this.token) opts.headers['Authorization'] = 'Bearer ' + this.token;
+    if (body) opts.body = JSON.stringify(body);
+    try {
+      const res = await fetch(this.baseUrl + url, opts);
+      if (res.status === 401) { logoutAdmin(); return null; }
+      return await res.json();
+    } catch(e) { toast('Erro de conexao', 'error'); return null; }
+  },
+  get(url) { return this.request('GET', url); },
+  post(url, body) { return this.request('POST', url, body); },
+  put(url, body) { return this.request('PUT', url, body); },
+  del(url) { return this.request('DELETE', url); }
+};
+
+const slug = window.location.pathname.replace('/admin/', '').split('/')[0] || '';
+let currentDevId = null;
+
+function esc(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.className = 'toast ' + type;
+  el.innerHTML = (type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-circle"></i>') + ' ' + msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+document.getElementById('loginTitle').textContent = 'Admin ' + slug.replace(/-/g, ' ');
+document.title = 'Admin - ' + slug.replace(/-/g, ' ');
+
+async function doLogin() {
+  const password = document.getElementById('adminPassword').value;
+  if (!password) return;
+  document.getElementById('loginLoading').style.display = 'block';
+  document.getElementById('loginError').style.display = 'none';
+  const r = await API.post('/api/admin/login', { slug, password });
+  document.getElementById('loginLoading').style.display = 'none';
+  if (!r || r.error) {
+    document.getElementById('loginError').textContent = r?.error || 'Erro ao conectar';
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  API.token = r.token;
+  if (r.system.primary_color) {
+    document.documentElement.style.setProperty('--primary', r.system.primary_color);
+  }
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('adminTitle').textContent = r.system.name + ' - Admin';
+  document.title = r.system.name + ' - Admin';
+  loadData();
+}
+
+function logoutAdmin() {
+  API.token = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('adminPassword').value = '';
+}
+
+async function loadData() {
+  const [stats, devs] = await Promise.all([
+    API.get('/api/admin/stats'),
+    API.get('/api/admin/developments')
+  ]);
+  if (stats) {
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="card"><h4>Empreendimentos</h4><div class="value purple">${stats.developments||0}</div></div>
+      <div class="card"><h4>Unidades</h4><div class="value purple">${stats.total_units||0}</div></div>
+      <div class="card"><h4>Disponiveis</h4><div class="value green">${stats.disponivel||0}</div></div>
+      <div class="card"><h4>Reservados</h4><div class="value orange">${stats.reservado||0}</div></div>
+      <div class="card"><h4>Vendidos</h4><div class="value red">${stats.vendido||0}</div></div>
+    `;
+  }
+  renderDevs(devs || []);
+}
+
+function renderDevs(data) {
+  const tbody = document.getElementById('devsTable');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-building"></i><p>Nenhum empreendimento cadastrado</p></div></td></tr>';
+    return;
+  }
+  const statusClass = { 'lançamento':'pending', 'obras':'info', 'pronto':'completed' };
+  const statusLabel = { 'lançamento':'Lançamento', 'obras':'Em Obras', 'pronto':'Pronto' };
+  tbody.innerHTML = data.map(d => `
+    <tr style="cursor:pointer" onclick="openDevDetail(${d.id})">
+      <td><strong>${esc(d.name)}</strong></td>
+      <td>${esc(d.builder||'-')}</td>
+      <td><span class="badge ${statusClass[d.status]||'pending'}">${statusLabel[d.status]||d.status}</span></td>
+      <td>${d.total_units||0}</td>
+      <td>${d.delivery_date||'-'}</td>
+      <td>
+        <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openDevDetail(${d.id})" title="Detalhes"><i class="fas fa-eye"></i></button>
+        <button class="btn btn-xs btn-outline" onclick="event.stopPropagation();editDev(${d.id})" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-xs btn-danger" onclick="event.stopPropagation();deleteDev(${d.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openDevModal(data) {
+  document.getElementById('devId').value = data ? data.id : '';
+  document.getElementById('devModalTitle').textContent = data ? 'Editar Empreendimento' : 'Novo Empreendimento';
+  document.getElementById('devName').value = data ? data.name : '';
+  document.getElementById('devBuilder').value = data ? (data.builder||'') : '';
+  document.getElementById('devStatus').value = data ? (data.status||'lançamento') : 'lançamento';
+  document.getElementById('devAddress').value = data ? (data.address||'') : '';
+  document.getElementById('devTotalUnits').value = data ? (data.total_units||0) : '';
+  document.getElementById('devDeliveryDate').value = data ? (data.delivery_date||'') : '';
+  document.getElementById('devDescription').value = data ? (data.description||'') : '';
+  openModal('devModal');
+}
+
+async function editDev(id) {
+  const data = await API.get('/api/admin/developments') || [];
+  const dev = data.find(d => d.id === id);
+  if (dev) openDevModal(dev);
+}
+
+async function saveDev() {
+  const id = document.getElementById('devId').value;
+  const body = {
+    name: document.getElementById('devName').value,
+    builder: document.getElementById('devBuilder').value,
+    status: document.getElementById('devStatus').value,
+    address: document.getElementById('devAddress').value,
+    total_units: parseInt(document.getElementById('devTotalUnits').value) || 0,
+    delivery_date: document.getElementById('devDeliveryDate').value,
+    description: document.getElementById('devDescription').value
+  };
+  if (id) {
+    await API.put('/api/admin/developments/'+id, body);
+  } else {
+    await API.post('/api/admin/developments', body);
+  }
+  closeModal('devModal');
+  loadData();
+  toast('Empreendimento salvo!', 'success');
+}
+
+async function deleteDev(id) {
+  if (!confirm('Excluir este empreendimento e todas as suas unidades?')) return;
+  await API.del('/api/admin/developments/'+id);
+  loadData();
+  toast('Excluido!', 'success');
+}
+
+function backToDevList() {
+  currentDevId = null;
+  document.getElementById('devDetail').style.display = 'none';
+}
+
+async function openDevDetail(id) {
+  currentDevId = id;
+  const data = await API.get('/api/admin/developments') || [];
+  const dev = data.find(d => d.id === id);
+  if (!dev) return;
+  document.getElementById('devDetailTitle').textContent = dev.name;
+  document.getElementById('devDetail').style.display = 'block';
+  await renderUnits(id);
+  await renderBrokers(id);
+}
+
+async function renderUnits(devId) {
+  const data = await API.get('/api/admin/developments/'+devId+'/units') || [];
+  const tbody = document.getElementById('unitsTable');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-door-open"></i><p>Nenhuma unidade</p></div></td></tr>';
+    return;
+  }
+  const stClass = { 'disponivel':'active', 'reservado':'pending', 'vendido':'completed' };
+  const stLabel = { 'disponivel':'Disponivel', 'reservado':'Reservado', 'vendido':'Vendido' };
+  tbody.innerHTML = data.map(u => `
+    <tr>
+      <td><strong>${esc(u.number)}</strong></td>
+      <td>${esc(u.tower||'-')}</td>
+      <td>${esc(u.block||'-')}</td>
+      <td>${u.area ? u.area+' m²' : '-'}</td>
+      <td>${u.bedrooms||0}</td>
+      <td>R$ ${(u.price||0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+      <td><span class="badge ${stClass[u.status]||'pending'}">${stLabel[u.status]||u.status}</span></td>
+      <td>
+        <button class="btn btn-xs btn-outline" onclick="editUnit(${u.id},${devId})"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-xs btn-danger" onclick="deleteUnit(${u.id},${devId})"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function editUnit(unitId, devId) {
+  const data = await API.get('/api/admin/developments/'+devId+'/units') || [];
+  const u = data.find(x => x.id === unitId) || {};
+  document.getElementById('unitModalTitle').textContent = 'Editar Unidade';
+  document.getElementById('unitId').value = unitId;
+  document.getElementById('unitNumber').value = u.number||'';
+  document.getElementById('unitTower').value = u.tower||'';
+  document.getElementById('unitBlock').value = u.block||'';
+  document.getElementById('unitFloor').value = u.floor||'';
+  document.getElementById('unitArea').value = u.area||'';
+  document.getElementById('unitPrice').value = u.price||'';
+  document.getElementById('unitBedrooms').value = u.bedrooms||'';
+  document.getElementById('unitSuites').value = u.suites||'';
+  document.getElementById('unitBathrooms').value = u.bathrooms||'';
+  document.getElementById('unitParking').value = u.parking_spots||'';
+  document.getElementById('unitStatus').value = u.status||'disponivel';
+  document.getElementById('unitNotes').value = u.notes||'';
+  openModal('unitModal');
+}
+
+function openUnitModal() {
+  document.getElementById('unitModalTitle').textContent = 'Nova Unidade';
+  document.getElementById('unitId').value = '';
+  ['unitNumber','unitTower','unitBlock','unitFloor','unitArea','unitPrice','unitBedrooms','unitSuites','unitBathrooms','unitParking','unitNotes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('unitStatus').value = 'disponivel';
+  openModal('unitModal');
+}
+
+async function saveUnit() {
+  const id = document.getElementById('unitId').value;
+  const devId = currentDevId;
+  if (!devId) { toast('Erro: empreendimento nao selecionado', 'error'); return; }
+  const body = {
+    number: document.getElementById('unitNumber').value,
+    tower: document.getElementById('unitTower').value,
+    block: document.getElementById('unitBlock').value,
+    floor: document.getElementById('unitFloor').value,
+    area: parseFloat(document.getElementById('unitArea').value) || 0,
+    price: parseFloat(document.getElementById('unitPrice').value) || 0,
+    bedrooms: parseInt(document.getElementById('unitBedrooms').value) || 0,
+    suites: parseInt(document.getElementById('unitSuites').value) || 0,
+    bathrooms: parseInt(document.getElementById('unitBathrooms').value) || 0,
+    parking_spots: parseInt(document.getElementById('unitParking').value) || 0,
+    status: document.getElementById('unitStatus').value,
+    notes: document.getElementById('unitNotes').value
+  };
+  if (id) {
+    await API.put('/api/admin/developments/'+devId+'/units/'+id, body);
+  } else {
+    await API.post('/api/admin/developments/'+devId+'/units', body);
+  }
+  closeModal('unitModal');
+  renderUnits(devId);
+  toast('Unidade salva!', 'success');
+}
+
+async function deleteUnit(id, devId) {
+  if (!confirm('Excluir esta unidade?')) return;
+  await API.del('/api/admin/developments/'+devId+'/units/'+id);
+  renderUnits(devId);
+  toast('Unidade excluida!', 'success');
+}
+
+async function renderBrokers(devId) {
+  const container = document.getElementById('brokerList');
+  const [data, brokers] = await Promise.all([
+    API.get('/api/admin/developments'),
+    API.get('/api/admin/brokers')
+  ]);
+  const dev = (data||[]).find(d => d.id === devId);
+  const assigned = dev ? (dev.brokers||[]) : [];
+  if (!assigned.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum corretor liberado para este empreendimento.</p>';
+    return;
+  }
+  container.innerHTML = assigned.map(b => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px">${(b.name||'?')[0]}</div>
+        <span>${esc(b.name)}</span> <span style="font-size:11px;color:var(--text-muted)">${b.commission_pct||3}%</span>
+      </div>
+      <button class="btn btn-xs btn-danger" onclick="removeBroker(${devId},${b.user_id})"><i class="fas fa-times"></i></button>
+    </div>
+  `).join('');
+}
+
+async function openBrokerModal() {
+  if (!currentDevId) { toast('Selecione um empreendimento', 'error'); return; }
+  document.getElementById('brokerDevId').value = currentDevId;
+  document.getElementById('brokerPct').value = 3.0;
+  const brokers = await API.get('/api/admin/brokers') || [];
+  const sel = document.getElementById('brokerUser');
+  sel.innerHTML = brokers.length ? brokers.map(b => '<option value="'+b.id+'">'+esc(b.name)+' - '+esc(b.email||'')+'</option>').join('') : '<option value="">Nenhum corretor cadastrado</option>';
+  openModal('brokerModal');
+}
+
+async function saveBroker() {
+  const devId = parseInt(document.getElementById('brokerDevId').value);
+  const userId = parseInt(document.getElementById('brokerUser').value);
+  const pct = parseFloat(document.getElementById('brokerPct').value) || 3.0;
+  if (!userId) { toast('Selecione um corretor', 'error'); return; }
+  await API.post('/api/admin/developments/'+devId+'/brokers', { user_id: userId, commission_pct: pct });
+  closeModal('brokerModal');
+  renderBrokers(devId);
+  toast('Corretor liberado!', 'success');
+}
+
+async function removeBroker(devId, userId) {
+  if (!confirm('Remover acesso deste corretor?')) return;
+  await API.del('/api/admin/developments/'+devId+'/brokers/'+userId);
+  renderBrokers(devId);
+  toast('Acesso removido.', 'success');
+}
+</script>
+<div id="toast" class="toast"></div>
+</body>
+</html>

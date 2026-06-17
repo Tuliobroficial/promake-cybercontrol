@@ -1,0 +1,2350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promake - Sistema de Gestão para Agências</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#6C5CE7;--primary-dark:#5A4BD1;--bg:#0F0F1A;--bg-card:#1A1A2E;--bg-sidebar:#12121F;--text:#E0E0E0;--text-muted:#8888AA;--border:#2A2A45;--success:#00C853;--warning:#FFD600;--danger:#FF1744;--info:#00B0FF;--radius:12px;--shadow:0 4px 20px rgba(0,0,0,0.3);--sidebar-w:260px;--header-h:60px;--safe-bottom:env(safe-area-inset-bottom,0px)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+
+/* ── Landing Page ── */
+#landingPage{display:block;position:fixed;inset:0;z-index:9998;overflow-y:auto;background:var(--bg);animation:fadeIn .4s ease}
+#landingPage.hidden{display:none}
+#landingPage::-webkit-scrollbar{width:6px}
+#landingPage::-webkit-scrollbar-track{background:transparent}
+#landingPage::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Navbar */
+.lp-nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 40px;background:rgba(15,15,26,0.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.lp-nav-brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;color:var(--text)}
+.lp-nav-brand i{color:var(--primary);font-size:24px;filter:drop-shadow(0 0 8px rgba(108,92,231,0.3))}
+.lp-nav-right{display:flex;align-items:center;gap:12px}
+
+/* Hero */
+.lp-hero{position:relative;padding:100px 24px 80px;text-align:center;max-width:920px;margin:0 auto;overflow:hidden}
+.lp-hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(108,92,231,0.10) 0%,rgba(0,176,255,0.05) 40%,transparent 70%);pointer-events:none}
+.lp-hero::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(42,42,69,0.3) 1px,transparent 1px);background-size:30px 30px;pointer-events:none}
+.lp-hero-glow{position:absolute;width:280px;height:280px;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:0.12}
+.lp-hero-glow.g1{top:-60px;right:-60px;background:var(--primary)}
+.lp-hero-glow.g2{bottom:-60px;left:-60px;background:var(--info)}
+#slideCarousel{min-height:200px}
+#slideCarousel .slide-track h1{font-size:clamp(28px,5.5vw,54px);font-weight:800;line-height:1.12;margin-bottom:18px;background:linear-gradient(135deg,#6C5CE7,#00B0FF,#6C5CE7);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradientShift 4s ease infinite;position:relative}
+#slideCarousel .slide-track p{font-size:clamp(15px,2vw,18px);color:var(--text-muted);margin-bottom:30px;line-height:1.7;max-width:640px;margin-left:auto;margin-right:auto;position:relative}
+#slideCarousel .slide-track .lp-hero-badge{margin-bottom:20px}
+#slideCarousel .slide-track .lp-hero-icon{margin-bottom:20px}
+#slideCarousel .slide-track .lp-hero-btns{margin-bottom:0}
+.lp-hero-default.hidden{display:none}
+.lp-hero-icon{font-size:56px;color:var(--primary);margin-bottom:20px;display:inline-block;filter:drop-shadow(0 0 40px rgba(108,92,231,0.3));opacity:0.9}
+.lp-hero-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;background:rgba(108,92,231,0.12);color:var(--primary);border:1px solid rgba(108,92,231,0.2);margin-bottom:20px;position:relative}
+.lp-hero-badge i{font-size:14px}
+.lp-hero h1{font-size:clamp(28px,5.5vw,54px);font-weight:800;line-height:1.12;margin-bottom:18px;background:linear-gradient(135deg,#6C5CE7,#00B0FF,#6C5CE7);background-size:200% 200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradientShift 4s ease infinite;position:relative}
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.lp-hero p{font-size:clamp(15px,2vw,18px);color:var(--text-muted);margin-bottom:30px;line-height:1.7;max-width:640px;margin-left:auto;margin-right:auto;position:relative}
+.lp-hero .btn{font-size:16px;padding:14px 36px;border-radius:12px;position:relative}
+.lp-hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;position:relative}
+.lp-hero-stats{display:flex;gap:16px;justify-content:center;margin-top:48px;flex-wrap:wrap;position:relative}
+.lp-hero-stat{text-align:center;padding:16px 28px;background:rgba(26,26,46,0.6);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);min-width:120px;transition:all .3s}
+.lp-hero-stat:hover{border-color:var(--primary);transform:translateY(-2px)}
+.lp-hero-stat .num{font-size:24px;font-weight:700;color:var(--primary)}
+.lp-hero-stat .label{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* Sections */
+.lp-section{padding:70px 24px;max-width:1200px;margin:0 auto}
+.lp-section-title{text-align:center;font-size:clamp(24px,3vw,34px);font-weight:700;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.lp-section-title i{color:var(--primary);font-size:clamp(22px,2.5vw,30px)}
+.lp-section-sub{text-align:center;color:var(--text-muted);font-size:clamp(13px,1.3vw,15px);margin-bottom:44px;max-width:580px;margin-left:auto;margin-right:auto;line-height:1.6}
+
+/* Features Grid */
+.lp-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.lp-feature{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;transition:all .3s;text-align:center;position:relative;overflow:hidden}
+.lp-feature::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);opacity:0;transition:opacity .3s}
+.lp-feature:hover::before{opacity:1}
+.lp-feature:hover{border-color:var(--primary);transform:translateY(-4px);box-shadow:0 12px 40px rgba(108,92,231,0.12)}
+.lp-feature-icon{width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 18px;transition:transform .3s}
+.lp-feature:hover .lp-feature-icon{transform:scale(1.1) rotate(-5deg)}
+.lp-feature h4{font-size:16px;margin-bottom:6px}
+.lp-feature p{font-size:13px;color:var(--text-muted);line-height:1.6}
+
+/* Integration Bar */
+.lp-int-bar{max-width:1200px;margin:0 auto;padding:0 24px 20px;text-align:center}
+.lp-int-bar-inner{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;opacity:0.25;padding:16px;border-radius:12px;background:var(--bg-card);border:1px solid var(--border)}
+.lp-int-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted)}
+.lp-int-item i{font-size:20px}
+
+/* Plans */
+.lp-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:960px;margin:0 auto}
+.lp-plan{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;text-align:center;transition:all .3s;position:relative;display:flex;flex-direction:column}
+.lp-plan:hover:not(.featured){border-color:var(--primary);transform:translateY(-4px)}
+.lp-plan.featured{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 8px 30px rgba(108,92,231,0.2);transform:translateY(-8px)}
+.lp-plan.featured .lp-plan-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:4px 16px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.lp-plan .plan-icon{font-size:36px;margin-bottom:10px;color:var(--primary)}
+.lp-plan h4{font-size:18px;margin-bottom:2px}
+.lp-plan .price{font-size:clamp(28px,4vw,40px);font-weight:700;color:var(--primary);margin:12px 0 2px}
+.lp-plan .price span{font-size:13px;color:var(--text-muted);font-weight:400}
+.lp-plan .desc{font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;flex:0 0 auto}
+.lp-plan ul{list-style:none;padding:0;margin:0 0 20px;text-align:left;flex:1}
+.lp-plan ul li{padding:7px 0;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(42,42,69,0.4)}
+.lp-plan ul li:last-child{border-bottom:none}
+.lp-plan ul li i{color:var(--success);font-size:13px;width:16px;flex-shrink:0}
+.lp-plan .btn{width:100%;justify-content:center;margin-top:auto}
+
+/* CTA Section */
+.lp-cta{text-align:center;padding:60px 24px;background:linear-gradient(180deg,transparent,rgba(108,92,231,0.06),transparent)}
+.lp-cta h2{font-size:clamp(22px,3vw,32px);font-weight:700;margin-bottom:10px}
+.lp-cta p{color:var(--text-muted);font-size:15px;margin-bottom:24px;max-width:500px;margin-left:auto;margin-right:auto}
+.lp-cta .btn{font-size:16px;padding:14px 36px;border-radius:12px}
+
+/* Footer */
+.lp-footer{text-align:center;padding:28px 24px;border-top:1px solid var(--border);color:var(--text-muted);font-size:13px}
+.lp-footer a{color:var(--primary);text-decoration:none;transition:opacity .2s}
+.lp-footer a:hover{opacity:.8}
+
+/* ── Landing Page Responsive ── */
+@media(max-width:768px){
+  .lp-nav{padding:12px 16px}
+  .lp-nav-brand{font-size:17px}
+  .lp-nav-brand i{font-size:20px}
+  .lp-hero{padding:60px 16px 50px}
+  .lp-hero-icon{font-size:40px;margin-bottom:14px}
+  .lp-hero-stats{gap:10px;margin-top:32px}
+  .lp-hero-stat{padding:12px 18px;min-width:90px;flex:1;max-width:140px}
+  .lp-hero-stat .num{font-size:20px}
+  .lp-hero-stat .label{font-size:10px}
+  .lp-hero .btn{font-size:14px;padding:12px 28px}
+  .lp-section{padding:44px 16px}
+  .lp-section-sub{margin-bottom:28px}
+  .lp-features{gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .lp-feature{padding:22px 18px}
+  .lp-feature-icon{width:48px;height:48px;font-size:20px;margin-bottom:14px}
+  .lp-plans{gap:16px}
+  .lp-plan{padding:24px 20px}
+  .lp-plan.featured{transform:translateY(0)}
+  .lp-plan .plan-icon{font-size:28px}
+  .lp-plan .price{font-size:28px}
+  .lp-int-bar-inner{gap:16px;padding:12px}
+  .lp-int-item{font-size:11px}
+  .lp-int-item i{font-size:16px}
+  .lp-cta{padding:40px 16px}
+}
+@media(max-width:480px){
+  .lp-nav{padding:10px 12px}
+  .lp-nav-brand{font-size:15px;gap:6px}
+  .lp-nav-brand i{font-size:18px}
+  .lp-hero{padding:40px 12px 36px}
+  .lp-hero-icon{font-size:32px;margin-bottom:10px}
+  .lp-hero-badge{font-size:11px;padding:4px 14px}
+  .lp-hero-stats{gap:8px}
+  .lp-hero-stat{padding:10px 12px;min-width:72px;max-width:110px}
+  .lp-hero-stat .num{font-size:17px}
+  .lp-hero-stat .label{font-size:9px}
+  .lp-hero .btn{font-size:13px;padding:10px 24px}
+  .lp-hero-btns{gap:8px}
+  .lp-section{padding:32px 12px}
+  .lp-section-title{font-size:20px}
+  .lp-section-sub{font-size:12px;margin-bottom:20px}
+  .lp-features{gap:10px;grid-template-columns:1fr}
+  .lp-feature{padding:18px 14px}
+  .lp-feature-icon{width:40px;height:40px;font-size:18px;margin-bottom:10px}
+  .lp-feature h4{font-size:14px}
+  .lp-feature p{font-size:12px}
+  .lp-plans{grid-template-columns:1fr}
+  .lp-plan{padding:20px 16px}
+  .lp-plan h4{font-size:16px}
+  .lp-plan .price{font-size:24px;margin:8px 0 2px}
+  .lp-plan .price span{font-size:12px}
+  .lp-plan ul li{font-size:12px;padding:6px 0}
+  .lp-plan .desc{font-size:12px}
+  .lp-cta{padding:32px 12px}
+  .lp-cta p{font-size:13px}
+  .lp-footer{padding:20px 12px;font-size:12px}
+}
+
+/* Login screen as modal overlay */
+#loginScreen{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px)}
+#loginScreen.show{display:flex}
+.login-box{background:var(--bg-card);padding:48px 40px;border-radius:var(--radius);width:420px;max-width:90%;box-shadow:var(--shadow);border:1px solid var(--border);animation:loginFade .5s ease;max-height:98vh;overflow-y:auto;position:relative}
+@keyframes loginFade{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.login-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s}
+.login-close:hover{background:rgba(255,23,68,0.1);color:var(--danger)}
+.login-box h1{font-size:28px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.login-box h1 i{color:var(--primary)}.login-box p{color:var(--text-muted);margin-bottom:32px;font-size:14px}
+.form-group{margin-bottom:20px}.form-group label{display:block;font-size:13px;color:var(--text-muted);margin-bottom:6px;font-weight:600}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;transition:border-color .2s;font-family:inherit}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary)}
+.form-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.btn{padding:12px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-sm{padding:8px 16px;font-size:13px}.btn-xs{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-success{background:var(--success);color:#000}.btn-danger{background:var(--danger);color:#fff}
+.btn-warning{background:var(--warning);color:#000;color:#000!important}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-info-btn{background:rgba(0,176,255,0.15);color:var(--info);border:1px solid transparent}.btn-info-btn:hover{background:rgba(0,176,255,0.25)}
+.login-error{color:var(--danger);font-size:13px;margin-top:12px;display:none;text-align:center}
+.login-error.show{display:block}.login-hint{margin-top:20px;padding:12px;background:rgba(108,92,231,0.1);border-radius:8px;font-size:12px;color:var(--text-muted);text-align:center}
+#app{display:none;height:100vh}#app.active{display:flex}
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;height:100dvh;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;overflow-y:auto;z-index:100;transition:transform .3s cubic-bezier(.4,0,.2,1);will-change:transform;-webkit-overflow-scrolling:touch}
+.sidebar.collapsed{transform:translateX(calc(var(--sidebar-w)*-1))}
+.main{margin-left:var(--sidebar-w);transition:margin-left .3s cubic-bezier(.4,0,.2,1)}
+.sidebar.collapsed~.main{margin-left:0}
+.sidebar-brand{padding:24px 20px;font-size:20px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .2s}
+.sidebar-brand:hover{background:rgba(108,92,231,0.05)}
+.brand-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;background:rgba(108,92,231,0.12);color:var(--primary);font-size:18px}
+.brand-logo img{width:100%;height:100%;object-fit:cover}.sidebar-nav{padding:12px;flex:1}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:8px;cursor:pointer;transition:all .2s;color:var(--text-muted);margin-bottom:2px;font-size:14px;position:relative}
+.nav-item:hover{background:rgba(108,92,231,0.1);color:var(--text)}
+.nav-item.active{background:var(--primary);color:#fff}.nav-item i{width:20px;text-align:center;font-size:16px}
+.nav-item.dragging,.nav-section-header.dragging{opacity:.4;background:rgba(108,92,231,0.05)}
+.nav-item.draggable-nav,.nav-section-header.draggable-nav{cursor:grab;touch-action:none}
+.nav-item.draggable-nav:active,.nav-section-header.draggable-nav:active{cursor:grabbing}
+.drag-hover{background:rgba(108,92,231,0.12)!important}
+.nav-section-items{position:relative}
+.nav-section{margin-bottom:2px}
+.nav-section-header{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;cursor:pointer;transition:color .2s;border-radius:6px;margin:4px 8px 0;color:var(--primary)}
+.nav-section-header:hover{color:var(--primary);opacity:.8}
+.nav-section-header .section-arrow{font-size:10px;transition:transform .2s ease;width:12px}
+.nav-section.open > .nav-section-header .section-arrow{transform:rotate(90deg)}
+.nav-section-items{overflow:hidden;max-height:0;transition:max-height .3s ease,opacity .2s ease;opacity:0}
+.nav-section.open > .nav-section-items{max-height:500px;opacity:1}
+.sidebar.collapsed .nav-section-header{display:none}
+.sidebar.collapsed .nav-section-items{max-height:none;opacity:1}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:13px;cursor:pointer;transition:background .2s;color:var(--text-muted)}
+.sidebar-version{padding:4px 20px 8px;font-size:11px;color:var(--text-muted);opacity:.5}
+.sidebar-footer:hover{background:rgba(255,23,68,0.1);color:var(--danger)}
+.theme-light{--bg:#F5F5FA;--bg-card:#FFFFFF;--bg-sidebar:#FFFFFF;--text:#1A1A2E;--text-muted:#8888AA;--border:#E0E0EC;--shadow:0 4px 20px rgba(0,0,0,0.06)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.header{padding:12px 24px;min-height:var(--header-h);background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.header h2{font-size:20px;display:flex;align-items:center;gap:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.header h2 i{color:var(--primary);flex-shrink:0}.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.notif-btn{position:relative;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:8px;border-radius:8px;transition:all .2s;display:flex;align-items:center;justify-content:center;min-width:36px;min-height:36px}
+.notif-btn:hover{background:rgba(108,92,231,0.1);color:var(--text)}
+.notif-btn .badge{position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center}
+.header-user{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:6px 12px;border-radius:8px;transition:background .2s}
+.header-user:hover{background:rgba(108,92,231,0.1)}
+.header-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.content{flex:1;padding:24px;overflow-y:auto;overflow-x:hidden}
+.page{display:none}.page.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:32px}
+.card{background:var(--bg-card);border-radius:var(--radius);padding:24px;border:1px solid var(--border);box-shadow:var(--shadow);transition:border-color .2s,transform .2s}
+.card-hover:hover{border-color:var(--primary);transform:translateY(-2px)}
+.card-value{font-size:32px;font-weight:700;margin:8px 0 4px}
+.card-label{font-size:13px;color:var(--text-muted)}
+.card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
+.card-icon.purple{background:rgba(108,92,231,0.15);color:var(--primary)}
+.card-icon.green{background:rgba(0,200,83,0.15);color:var(--success)}
+.card-icon.blue{background:rgba(0,176,255,0.15);color:var(--info)}
+.card-icon.orange{background:rgba(255,214,0,0.15);color:var(--warning)}
+.card-icon.red{background:rgba(255,23,68,0.15);color:var(--danger)}
+.card-change{font-size:12px;display:flex;align-items:center;gap:4px}
+.card-change.up{color:var(--success)}.card-change.down{color:var(--danger)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.charts-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.chart-card{background:var(--bg-card);border-radius:var(--radius);padding:24px;border:1px solid var(--border)}
+.chart-card canvas{max-height:260px;width:100%!important}
+.chart-card h3{font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.table-container{overflow-x:auto;position:relative;-webkit-overflow-scrolling:touch}
+.table-container::after{content:'';position:sticky;right:0;top:0;bottom:0;width:32px;background:linear-gradient(90deg,transparent,var(--bg-card));pointer-events:none;opacity:0;transition:opacity .2s}
+.table-container.is-scrollable::after{opacity:1}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+th{color:var(--text-muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+tr:hover td{background:rgba(108,92,231,0.05)}
+.status{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block}
+.status.active{background:rgba(108,92,231,0.15);color:var(--primary)}
+.status.completed{background:rgba(0,200,83,0.15);color:var(--success)}
+.status.pending{background:rgba(255,214,0,0.15);color:var(--warning)}
+.status.inactive,.status.cancelled,.status.atrasado{background:rgba(255,23,68,0.15);color:var(--danger)}
+.status.active_s{background:rgba(0,176,255,0.15);color:var(--info)}
+.status.andamento{background:rgba(108,92,231,0.15);color:var(--primary)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.notif-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:998;display:none}
+.notif-overlay.show{display:block}
+.modal{background:var(--bg-card);border-radius:var(--radius);padding:32px;width:600px;max-width:95%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);box-shadow:var(--shadow);margin:auto}
+.modal h3{font-size:20px;margin-bottom:24px;display:flex;align-items:center;gap:8px}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px;flex-wrap:wrap}
+.finance-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.finance-item{padding:16px;border-radius:8px;border:1px solid var(--border)}
+.finance-item .label{font-size:12px;color:var(--text-muted)}
+.finance-item .value{font-size:24px;font-weight:700;margin-top:4px}
+.finance-item .value.positive{color:var(--success)}.finance-item .value.negative{color:var(--danger)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.mobile-toggle{background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px;margin-right:4px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;-webkit-tap-highlight-color:transparent}
+@media(hover:none){.sidebar-overlay{background:rgba(0,0,0,0.6);backdrop-filter:blur(2px)}}
+.hide-finance .card-value,.hide-finance .stage-value,.hide-finance td:nth-child(6),.hide-finance td:nth-child(5){filter:blur(8px);user-select:none;transition:filter .3s}
+.chat-msg{display:flex;gap:12px;max-width:85%;animation:fadeIn .3s ease}.chat-msg.user{margin-left:auto;flex-direction:row-reverse}
+.chat-msg .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.chat-msg.user .avatar{background:var(--primary);color:#fff}.chat-msg.bot .avatar{background:rgba(108,92,231,0.12);color:var(--primary)}
+.chat-msg .bubble{padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.chat-msg.user .bubble{background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot .bubble{background:var(--bg-card);border:1px solid var(--border);border-bottom-left-radius:4px;color:var(--text)}
+.chat-msg.bot .bubble strong{color:var(--primary)}.chat-msg .time{font-size:10px;color:var(--text-muted);margin-top:4px;opacity:0.7}
+.chat-msg.user .time{text-align:right}#chatMessages::-webkit-scrollbar{width:4px}
+.chat-loading{display:flex;gap:8px;align-items:center;padding:12px 20px;color:var(--text-muted);font-size:13px}
+.chat-loading .dots{display:flex;gap:4px}.chat-loading .dots span{width:8px;height:8px;border-radius:50%;background:var(--primary);animation:bounce 1.4s infinite ease-in-out both}
+.chat-loading .dots span:nth-child(1){animation-delay:-0.32s}.chat-loading .dots span:nth-child(2){animation-delay:-0.16s}
+@keyframes bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+.toast{position:fixed;top:20px;right:20px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px 20px;display:none;align-items:center;gap:12px;box-shadow:var(--shadow);font-size:14px;animation:slideIn .3s ease}
+.toast.show{display:flex}.toast.success i{color:var(--success)}.toast.error i{color:var(--danger)}.toast.info i{color:var(--info)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-success{background:rgba(0,200,83,0.15);color:var(--success)}
+.badge-danger{background:rgba(255,23,68,0.15);color:var(--danger)}
+.badge-warning{background:rgba(255,214,0,0.15);color:var(--warning)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state i{font-size:48px;margin-bottom:16px;opacity:0.3}.empty-state h3{color:var(--text);margin-bottom:8px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.toolbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.filter-group select,.filter-group input{padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:inherit}
+.filter-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:28px}
+.search-box{display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0 12px}
+.search-box input{background:transparent;border:none;padding:10px 8px;color:var(--text);width:200px;font-size:14px}
+.search-box input:focus{outline:none}.search-box i{color:var(--text-muted)}
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.tab{padding:10px 20px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:all .2s;border-bottom:2px solid transparent}
+.tab:hover{color:var(--text);background:rgba(108,92,231,0.05)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);background:rgba(108,92,231,0.08)}
+.dash-top{display:flex;gap:16px;align-items:flex-start;margin-bottom:32px}
+.dash-top .cards-grid{flex:1;margin-bottom:0;grid-template-columns:1fr 1fr}
+.globe-area{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;flex-shrink:0;min-width:140px}
+#globeCanvas{width:140px;height:140px;pointer-events:none;opacity:0.7}
+#globeEarth{width:140px;height:140px;pointer-events:none;opacity:0.7;margin-top:16px}
+.globe-info{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted);white-space:nowrap;line-height:1.6}
+.globe-info i{width:14px;text-align:center;font-size:12px;color:var(--primary)}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.3)}}
+.kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;min-height:400px}
+.kanban-board-5{grid-template-columns:repeat(5,1fr)}
+#page-design .cards-grid{margin-bottom:0;gap:12px}
+#page-design .card{padding:14px}
+#landingEditorContainer{max-height:calc(100vh - 160px);overflow-y:auto;padding-right:6px}
+#landingEditorContainer::-webkit-scrollbar{width:8px}
+#landingEditorContainer::-webkit-scrollbar-track{background:transparent}
+#landingEditorContainer::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;border:2px solid transparent;background-clip:content-box}
+#landingEditorContainer::-webkit-scrollbar-thumb:hover{background:var(--text-muted);border:2px solid transparent;background-clip:content-box}
+.lp-elementor-panel{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);box-shadow:var(--shadow)}
+.lp-elementor-panel+.lp-elementor-panel{margin-top:12px}
+.lp-elementor-header{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;user-select:none;border-bottom:1px solid var(--border);transition:background .2s}
+.lp-elementor-header:hover{background:rgba(108,92,231,0.05)}
+.lp-elementor-header .e-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:14px;color:#fff;flex-shrink:0}
+.lp-elementor-header .e-title{flex:1;font-size:14px;font-weight:600;color:var(--text)}
+.lp-elementor-header .e-badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+.lp-elementor-header .e-toggle{font-size:12px;color:var(--text-muted);transition:transform .3s;width:20px;text-align:center}
+.lp-elementor-header .e-toggle.open{transform:rotate(180deg)}
+.lp-elementor-body{padding:20px;display:none}
+.lp-elementor-body.open{display:block}
+.lp-elementor-field{margin-bottom:20px}
+.lp-elementor-field:last-child{margin-bottom:0}
+.lp-elementor-field label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.lp-elementor-field label .fas,.lp-elementor-field label .far{font-size:13px;opacity:0.7;color:var(--primary);width:16px;text-align:center}
+.lp-elementor-field input,.lp-elementor-field textarea,.lp-elementor-field select{width:100%;padding:14px 16px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;transition:border-color .2s,box-shadow .2s}
+.lp-elementor-field input:focus,.lp-elementor-field textarea:focus,.lp-elementor-field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px rgba(108,92,231,0.15)}
+.lp-elementor-field textarea{resize:vertical;min-height:100px;line-height:1.6;padding:14px 16px}
+.lp-elementor-field .field-desc{font-size:12px;color:var(--text-muted);margin-top:6px;opacity:0.8;padding-left:2px}
+.lp-elementor-field .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.lp-elementor-field .field-row{grid-template-columns:1fr}}
+#page-design .card .card-icon{margin-bottom:8px;width:40px;height:40px;font-size:17px}
+.kanban-col{background:rgba(255,255,255,0.03);border-radius:var(--radius);padding:16px;border:1px solid var(--border)}
+.kanban-col h4{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.kanban-col h4 .count{margin-left:auto;background:var(--border);padding:2px 8px;border-radius:10px;font-size:11px}
+.kanban-card{background:var(--bg-card);border-radius:8px;padding:14px;margin-bottom:8px;border:1px solid var(--border);cursor:grab;transition:all .2s}
+.kanban-card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.kanban-card .card-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.kanban-card .card-sub{font-size:11px;color:var(--text-muted)}
+.kanban-card .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.kanban-empty{padding:24px 12px;text-align:center;color:var(--text-muted);font-size:12px;border:2px dashed var(--border);border-radius:8px;margin-top:4px}
+.kanban-col.drag-over{border-color:var(--primary);background:rgba(108,92,231,0.06)}
+.funnel{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.funnel-stage{padding:16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);display:flex;align-items:center;gap:16px}
+.funnel-stage .stage-info{flex:1}.funnel-stage .stage-name{font-weight:600;font-size:14px}
+.funnel-stage .stage-count{font-size:12px;color:var(--text-muted)}
+.funnel-stage .stage-value{font-weight:700;font-size:16px;color:var(--primary)}
+.funnel-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px}
+.funnel-bar-inner{height:100%;border-radius:4px;transition:width .3s}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calendar-header{text-align:center;padding:8px;font-size:12px;color:var(--text-muted);font-weight:600}
+.calendar-day{padding:8px;border-radius:8px;border:1px solid var(--border);min-height:80px;font-size:12px;cursor:pointer;transition:all .2s}
+.calendar-day:hover{border-color:var(--primary)}
+.calendar-day.today{border-color:var(--primary);background:rgba(108,92,231,0.1)}
+.calendar-day.other-month{opacity:0.4}
+.calendar-day .day-num{font-weight:600;margin-bottom:4px}
+.calendar-day .event-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin:1px 2px}
+.calendar-day .event-dot.task{background:var(--warning)}
+.calendar-day .event-dot.reuniao{background:var(--primary)}
+.calendar-day .event-dot.prazo{background:var(--danger)}
+.calendar-day .event-dot.evento{background:var(--success)}
+.calendar-day .event-dot.aniversario{background:var(--info)}
+.calendar-day .event-dot.holiday{background:var(--danger);width:8px;height:8px;opacity:.6}
+.calendar-day .event-dot.seasonal{background:var(--success);width:8px;height:8px;opacity:.6}
+.calendar-nav{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.calendar-nav h3{font-size:18px;min-width:200px;text-align:center}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}
+.stat-card{padding:20px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card)}
+.stat-card .stat-value{font-size:28px;font-weight:700}
+.stat-card .stat-label{font-size:12px;color:var(--text-muted);margin-top:4px}
+@media(max-width:1024px){
+  .kanban-board,.kanban-board-5{grid-template-columns:repeat(2,1fr)}
+  .charts-grid,.charts-grid-2{grid-template-columns:1fr}
+  .dash-top .globe-area{min-width:120px}
+  #globeCanvas,#globeEarth{width:110px;height:110px}
+  .calendar-grid{gap:2px}
+  .finance-summary{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .sidebar{left:0;transform:translateX(calc(var(--sidebar-w)*-1));transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar.collapsed{transform:translateX(calc(var(--sidebar-w)*-1))}
+  .main,.sidebar.collapsed~.main{margin-left:0}
+  .sidebar-overlay.show{display:block}
+  .sidebar-overlay.show.showing{animation:fadeIn .3s ease}
+  .sidebar-brand{padding:18px 16px;font-size:18px}
+  .sidebar-nav{padding:8px}
+  .nav-item{padding:10px 14px;font-size:14px;min-height:44px}
+  .nav-section-header{min-height:36px}
+  .sidebar-footer{min-height:48px}
+  .sidebar-version{display:none}
+  .header{padding:10px 12px;gap:8px}
+  .header h2{font-size:15px}
+  .header h2 i{font-size:16px}
+  .header-right{gap:4px}
+  .header-right .header-user span{display:none}
+  .header-user{padding:4px 8px;min-height:36px}
+  .notif-btn{padding:6px;min-width:34px;min-height:34px;font-size:16px}
+  .dash-top{flex-direction:column}
+  .dash-top .globe-area{display:none}
+  .dash-top .globe-area.mobile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;min-width:unset}
+  .dash-top .globe-area.mobile-stats .globe-info{font-size:11px;justify-content:center;padding:8px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);white-space:normal;text-align:center;flex-direction:column;gap:4px}
+  .globe-area.mobile-stats .status-dot{display:inline-block;vertical-align:middle}
+  .cards-grid{grid-template-columns:1fr;gap:12px}
+  .charts-grid,.charts-grid-2{grid-template-columns:1fr;gap:12px}
+  .chart-card canvas{max-height:200px}
+  .charts-grid:last-child,.charts-grid-2:last-child{margin-bottom:0}
+  .finance-summary{grid-template-columns:1fr;gap:10px}
+  .content{padding:14px}
+  .card{padding:16px}
+  .card-value{font-size:24px}
+  .card-icon{width:40px;height:40px;font-size:17px}
+  .modal{width:98%;padding:20px;margin:8px}
+  .modal .form-row{grid-template-columns:1fr}
+  .search-box input{width:100px;font-size:13px}
+  .toolbar{flex-direction:column;align-items:stretch;gap:8px}
+  .toolbar .btn{width:100%;justify-content:center}
+  .toolbar-left,.toolbar-right{width:100%}
+  .toolbar-right .btn{flex:1}
+  .form-row{grid-template-columns:1fr}
+  .filter-group select,.filter-group input{padding:6px 10px;font-size:11px}
+  .tabs{gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:8px 14px;font-size:12px;white-space:nowrap;flex-shrink:0}
+  .kanban-board{grid-template-columns:1fr;gap:12px}
+  .kanban-col{padding:12px}
+  .kanban-card{padding:12px}
+  .calendar-grid{gap:2px}
+  .calendar-day{min-height:48px;padding:4px;font-size:10px}
+  .calendar-day .day-num{font-size:11px;margin-bottom:2px}
+  .calendar-nav{gap:8px;flex-wrap:wrap}
+  .calendar-nav h3{font-size:15px;min-width:auto;order:-1;width:100%}
+  .calendar-nav .btn{margin-left:0!important}
+  .funnel-stage{padding:12px;gap:10px;flex-wrap:wrap}
+  .funnel-stage .stage-value{font-size:14px}
+  .chart-card{padding:16px}
+  .chart-card h3{font-size:14px}
+  table{font-size:13px}
+  th,td{padding:8px 10px}
+  .grid-3{grid-template-columns:1fr;gap:12px}
+  .stat-card{padding:16px}
+  .stat-card .stat-value{font-size:22px}
+  .empty-state{padding:40px 16px}
+  .empty-state i{font-size:36px}
+  #page-finance .tabs{flex-wrap:nowrap}
+  #page-finance .tab{flex:1;text-align:center;padding:8px 6px;font-size:11px}
+  .login-box{padding:32px 28px;margin:12px}
+  .login-box h1{font-size:24px}
+  #page-reports .tabs{gap:0}
+  #page-reports .tab{flex:1;text-align:center;padding:8px 4px;font-size:11px}
+}
+@media(max-width:480px){
+  .header{padding:8px 10px}
+  .header h2{font-size:14px}
+  .header-right{gap:2px}
+  .notif-btn{padding:4px;min-width:32px;min-height:32px;font-size:15px}
+  .content{padding:10px}
+  .card{padding:12px}
+  .card-value{font-size:20px}
+  .card-icon{width:36px;height:36px;font-size:15px}
+  .btn{padding:10px 18px;font-size:13px}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .btn-xs{padding:4px 8px;font-size:10px;min-height:32px}
+  .login-box{padding:24px 16px;margin:8px}
+  .login-box h1{font-size:20px}
+  .search-box input{width:80px}
+  .filter-group select,.filter-group input{padding:5px 8px;font-size:10px;max-width:110px}
+  .modal{padding:16px;margin:4px}
+  .modal h3{font-size:17px;margin-bottom:16px}
+  .modal-actions{gap:8px}
+  .calendar-day{min-height:36px;padding:2px;font-size:9px}
+  .calendar-day .day-num{font-size:10px}
+  .calendar-nav h3{font-size:14px}
+  .funnel-stage{padding:10px;gap:8px}
+  .finance-item .value{font-size:18px}
+  .kanban-card .card-title{font-size:12px}
+  table{font-size:12px}
+  th,td{padding:6px 8px}
+  #page-finance .tab{padding:6px 4px;font-size:10px}
+  #page-reports .tab{padding:6px 4px;font-size:10px}
+  .nav-item{font-size:13px;min-height:40px;padding:8px 12px}
+  .sidebar-brand{padding:14px 12px;font-size:16px}
+  .brand-logo{width:32px;height:32px;font-size:15px}
+  .dash-top .globe-area.mobile-stats .globe-info{font-size:10px;padding:6px}
+  .toast{right:10px;left:10px;font-size:13px}
+}
+@media(hover:none) and (pointer:coarse){
+  .btn,.nav-item,.notif-btn,.header-user,.tab,.calendar-day,.kanban-card{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .nav-item:active{background:rgba(108,92,231,0.15)}
+  .btn:active{transform:scale(.97)}
+  .kanban-card{cursor:default}
+  .kanban-card:active{transform:scale(.98)}
+}
+.timeline-stage{-webkit-user-select:none;user-select:none;cursor:grab;position:absolute}.timeline-stage.locked{cursor:not-allowed}.timeline-stage.link-target{cursor:crosshair;box-shadow:0 0 0 3px #6C5CE7}.timeline-stage.locked.link-target{cursor:not-allowed}.timeline-stage.dragging,.kanban-card.dragging{opacity:.5;outline:2px dashed #fff}
+.resize-handle{opacity:0;transition:opacity .15s}.resize-handle:hover,.resize-handle:active,.timeline-stage:hover .resize-handle,.floating-item:hover .resize-handle{opacity:1;background:rgba(255,255,255,0.15);border-left:1px solid rgba(255,255,255,0.2)}
+@keyframes pulse-em-andamento{0%,100%{box-shadow:0 0 0 0 rgba(0,176,255,0.6),inset 0 0 0 0 rgba(0,176,255,0.05)}50%{box-shadow:0 0 0 10px rgba(0,176,255,0),inset 0 0 8px 2px rgba(0,176,255,0.1)}}
+.kanban-card.status-em_andamento{border-color:#00B0FF!important;border-width:2px!important;animation:pulse-em-andamento 1.5s ease-in-out infinite;background:linear-gradient(135deg,rgba(0,176,255,0.04),transparent 60%)!important}
+@keyframes tremolo-concluido{0%,100%{box-shadow:0 0 4px 2px rgba(0,200,83,0.15);transform:translateX(0)}10%{transform:translateX(-2px)}20%{transform:translateX(2px)}30%{transform:translateX(-1.5px)}40%{transform:translateX(1.5px)}50%{box-shadow:0 0 14px 6px rgba(0,200,83,0.3);transform:translateX(-1px)}60%{transform:translateX(1px)}70%{transform:translateX(-0.5px)}80%{transform:translateX(0.5px)}90%{transform:translateX(0)}}
+.kanban-card.status-concluido{border-color:#00C853!important;border-width:2px!important;animation:tremolo-concluido 1.2s ease-in-out infinite;background:linear-gradient(135deg,rgba(0,200,83,0.06),transparent 60%)!important}
+@keyframes pulse-pendente{0%,100%{box-shadow:0 0 0 0 rgba(255,214,0,0.4),inset 0 0 0 0 rgba(255,214,0,0.03)}50%{box-shadow:0 0 0 8px rgba(255,214,0,0),inset 0 0 6px 1px rgba(255,214,0,0.08)}}
+.kanban-card.status-pendente{border-color:#FFD600!important;border-width:2px!important;animation:pulse-pendente 2s ease-in-out infinite;background:linear-gradient(135deg,rgba(255,214,0,0.04),transparent 60%)!important}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes confetti{0%{transform:scale(1) rotate(0deg)}100%{transform:scale(1.2) rotate(15deg)}}
+.dots-anim{display:inline-block;overflow:hidden;vertical-align:bottom;width:0;animation:dots 1.8s steps(4) infinite}
+@keyframes dots{0%{width:0}25%{width:.6em}50%{width:1.2em}75%{width:1.8em}100%{width:0}}
+.floating-item{cursor:grab;transition:box-shadow .2s}.floating-item:hover{box-shadow:0 6px 24px rgba(0,0,0,0.4)}.floating-item.dragging{opacity:.7;outline:2px dashed var(--info)}
+.image-grid{display:flex;flex-wrap:wrap;gap:4px;min-height:30px;margin-bottom:6px}
+@keyframes linkFlow{to{stroke-dashoffset:-20}}
+#timelineLinks line{stroke-dasharray:8 4;animation:linkFlow .8s linear infinite}
+#timelineCanvasWrapper::-webkit-scrollbar{width:8px;height:8px}
+#timelineCanvasWrapper::-webkit-scrollbar-track{background:transparent}
+#timelineCanvasWrapper::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+@media(display-mode:standalone){
+  .sidebar{padding-top:env(safe-area-inset-top,0)}
+  .content{padding-bottom:env(safe-area-inset-bottom,0)}
+}
+.music-player{position:fixed;bottom:16px;right:16px;z-index:9999;width:380px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 40px rgba(0,0,0,0.5);font-size:13px;transition:all .3s ease;overflow:hidden}
+.music-player.minimized{width:260px!important;height:auto!important;cursor:pointer}
+.music-player.minimized .music-body{display:none}
+.music-player.minimized .music-header{border-radius:var(--radius);padding:10px 16px}
+.music-player.minimized .music-header-toggle i{transform:rotate(180deg)}
+.music-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:background .2s}
+.music-header:hover{background:var(--bg-card)}
+.music-header i.fa-music{color:var(--primary)}
+.music-header-title{font-weight:600;font-size:14px}
+.music-now-playing{flex:1;text-align:right;font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.music-header-toggle{transition:transform .3s;font-size:12px;color:var(--text-muted)}
+.music-close{font-size:14px;color:var(--text-muted);cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .2s}
+.music-close:hover{background:var(--danger);color:#fff}
+.music-body{padding:10px}
+.music-source-tabs{display:flex;gap:4px;margin-bottom:8px}
+.music-source-tab{flex:1;padding:6px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text-muted);border-radius:6px;cursor:pointer;font-size:12px;text-align:center;transition:all .2s}
+.music-source-tab:hover{border-color:var(--primary)}
+.music-source-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.music-source-panels{min-height:80px}
+.music-source-panel{display:none}
+.music-source-panel.active{display:block}
+.music-url-row{display:flex;gap:4px}
+.music-url-input{flex:1;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.music-url-input:focus{border-color:var(--primary)}
+.music-playlist{max-height:120px;overflow-y:auto;margin-top:6px}
+.music-playlist::-webkit-scrollbar{width:4px}
+.music-playlist::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.music-playlist-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px;transition:background .2s}
+.music-playlist-item:hover{background:var(--bg)}
+.music-playlist-item.active{background:rgba(108,92,231,0.15);color:var(--primary)}
+.music-playlist-item i{color:var(--text-muted);font-size:10px;width:14px;text-align:center}
+.music-playlist-item.active i{color:var(--primary)}
+.music-track-info{text-align:center;font-size:12px;color:var(--text-muted);padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.music-progress-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+.music-time{font-size:11px;color:var(--text-muted);min-width:32px;text-align:center}
+#musicProgress{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+#musicProgress::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--primary);cursor:pointer}
+#musicProgress::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--primary);border:none;cursor:pointer}
+.music-buttons{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
+.music-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:13px}
+.music-btn:hover{border-color:var(--primary);color:var(--primary)}
+.music-play-btn{width:38px;height:38px;background:var(--primary);color:#fff;border-color:var(--primary)}
+.music-play-btn:hover{background:var(--primary-dark);color:#fff}
+.music-volume-wrap{display:flex;align-items:center;gap:4px;margin-left:8px}
+.music-vol-icon{font-size:13px;color:var(--text-muted);width:16px;text-align:center}
+#musicVolume{width:60px;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+#musicVolume::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--primary);cursor:pointer}
+#musicVolume::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--primary);border:none;cursor:pointer}
+.music-source-label{font-size:10px;color:var(--text-muted);margin-left:auto;padding:2px 6px;border-radius:4px;background:var(--bg)}
+.music-yt-results{max-height:180px;overflow-y:auto;margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.music-yt-results::-webkit-scrollbar{width:4px}
+.music-yt-results::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.music-yt-result{display:flex;gap:8px;padding:5px;border-radius:6px;cursor:pointer;transition:background .2s;align-items:center}
+.music-yt-result:hover{background:var(--bg)}
+.music-yt-result img{width:60px;height:36px;border-radius:4px;object-fit:cover;flex-shrink:0}
+.music-yt-result-info{flex:1;min-width:0}
+.music-yt-result-title{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-yt-result-channel{font-size:10px;color:var(--text-muted)}
+.music-yt-result-dur{font-size:10px;color:var(--text-muted);flex-shrink:0}
+.yt-save-btn{padding:2px 5px;border:none;background:transparent;color:var(--text-muted);border-radius:3px;cursor:pointer;font-size:11px;flex-shrink:0;transition:all .2s}
+.yt-save-btn:hover{background:var(--bg);color:var(--primary)}
+.music-yt-active{margin-top:6px}
+.music-yt-viewer{margin-bottom:4px;min-height:80px;overflow:hidden;border-radius:8px;background:#000;position:relative}
+.music-yt-viewer iframe{width:100%;height:100%;border:none;display:block}
+#ytPlayerContainer{width:100%;height:100%}
+.music-yt-viewer .yt-resize-handle{position:absolute;bottom:0;left:0;right:0;height:12px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);opacity:0;transition:opacity .2s;z-index:5}
+.music-yt-viewer:hover .yt-resize-handle{opacity:1}
+.music-yt-viewer .yt-resize-handle::after{content:'';width:30px;height:4px;background:rgba(255,255,255,0.5);border-radius:2px}
+.music-yt-viewer .yt-resize-handle:active::after{background:rgba(255,255,255,0.8)}
+.music-yt-info-bar{display:flex;align-items:center;gap:6px;padding:4px 0}
+.music-yt-title{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.music-yt-mode-toggle{display:flex;gap:2px}
+.yt-mode-btn{padding:3px 8px;border:1px solid var(--border);background:var(--bg);color:var(--text-muted);border-radius:4px;cursor:pointer;font-size:12px;transition:all .2s}
+.yt-mode-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.yt-mode-btn:hover:not(.active){border-color:var(--primary);color:var(--primary)}
+.yt-mode-btn.yt-maximized{background:var(--primary);color:#fff;border-color:var(--primary)}
+.music-spotify-embed iframe{border-radius:8px;margin-top:6px;width:100%;height:80px}
+.music-yt-playlist-header{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 4px;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-muted)}
+.music-yt-playlist-header span i{margin-right:4px}
+.music-yt-playlist{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.music-yt-playlist::-webkit-scrollbar{width:8px}
+.music-yt-playlist::-webkit-scrollbar-track{background:transparent}
+.music-yt-playlist::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;border:2px solid transparent;background-clip:content-box;min-height:30px}
+.music-yt-playlist::-webkit-scrollbar-thumb:hover{background:var(--text-muted);border:2px solid transparent;background-clip:content-box}
+.music-yt-playlist-item{display:flex;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;transition:background .2s;align-items:center}
+.music-yt-playlist-item:hover{background:var(--bg)}
+.music-yt-playlist-item.active{background:rgba(108,92,231,0.12)}
+.music-yt-playlist-item img{width:40px;height:26px;border-radius:3px;object-fit:cover;flex-shrink:0}
+.music-yt-playlist-item-info{flex:1;min-width:0}
+.music-yt-playlist-item-title{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-yt-playlist-item-channel{font-size:9px;color:var(--text-muted)}
+.music-yt-playlist-item-actions{display:flex;gap:2px;flex-shrink:0}
+.music-yt-playlist-item-actions button{padding:2px 5px;border:none;background:transparent;color:var(--text-muted);border-radius:3px;cursor:pointer;font-size:10px;transition:all .2s}
+.music-yt-playlist-item-actions button:hover{background:var(--bg);color:var(--text)}
+.music-yt-playlist-item-actions .del-btn:hover{color:var(--danger)}
+.music-yt-playlist-empty{text-align:center;padding:12px;color:var(--text-muted);font-size:11px;font-style:italic}
+.music-resize-n,.music-resize-s,.music-resize-e,.music-resize-w,.music-resize-ne,.music-resize-nw,.music-resize-se,.music-resize-sw{position:absolute;z-index:15}
+.music-resize-n{top:-3px;left:8px;right:8px;height:6px;cursor:n-resize}
+.music-resize-s{bottom:-3px;left:8px;right:8px;height:6px;cursor:s-resize}
+.music-resize-e{right:-3px;top:8px;bottom:8px;width:6px;cursor:e-resize}
+.music-resize-w{left:-3px;top:8px;bottom:8px;width:6px;cursor:w-resize}
+.music-resize-ne{top:-4px;right:-4px;width:10px;height:10px;cursor:ne-resize}
+.music-resize-nw{top:-4px;left:-4px;width:10px;height:10px;cursor:nw-resize}
+.music-resize-se{bottom:-4px;right:-4px;width:10px;height:10px;cursor:se-resize}
+.music-resize-sw{bottom:-4px;left:-4px;width:10px;height:10px;cursor:sw-resize}
+.music-player.minimized .music-resize-n,.music-player.minimized .music-resize-s,
+.music-player.minimized .music-resize-e,.music-player.minimized .music-resize-w,
+.music-player.minimized .music-resize-ne,.music-player.minimized .music-resize-nw,
+.music-player.minimized .music-resize-se,.music-player.minimized .music-resize-sw{display:none}
+@media(max-width:480px){.music-player{width:calc(100vw - 32px)!important;right:8px;bottom:8px}.music-player .music-resize-e,.music-player .music-resize-w{display:none}}
+</style>
+</head>
+<body>
+
+<div id="landingPage">
+  <nav class="lp-nav">
+    <div class="lp-nav-brand"><i class="fas fa-crown"></i> Promake</div>
+    <div class="lp-nav-right">
+      <button class="btn btn-outline btn-sm" onclick="App.openLandingLogin()"><i class="fas fa-sign-in-alt"></i> Login</button>
+    </div>
+  </nav>
+
+  <section class="lp-hero">
+    <div class="lp-hero-glow g1"></div>
+    <div class="lp-hero-glow g2"></div>
+    <div id="slideCarousel"></div>
+    <div class="lp-hero-default">
+      <div class="lp-hero-badge" id="lp-hero-badge"><i class="fas fa-crown" id="lp-hero-badge-icon"></i> <span id="lp-hero-badge-text">Ecossistema Completo de Gestão</span></div>
+      <div class="lp-hero-icon"><i class="fas fa-crown"></i></div>
+      <h1 id="lp-hero-title">Gestão Inteligente para Agências Digitais, Negócios e Empresas</h1>
+      <p id="lp-hero-subtitle">CRM, Projetos, Kanban, Financeiro, Relatórios, Marketing Digital e muito mais em um só lugar. O ecossistema definitivo para sua agência ou empresa crescer.</p>
+      <div class="lp-hero-btns">
+        <button class="btn btn-primary" onclick="App.openLandingLogin()" id="lp-hero-btn1"><i class="fas fa-rocket"></i> <span>Acessar Agora</span></button>
+        <button class="btn btn-outline" onclick="document.querySelector('.lp-section').scrollIntoView({behavior:'smooth'})" id="lp-hero-btn2"><i class="fas fa-cubes"></i> <span>Conhecer Módulos</span></button>
+      </div>
+      <div class="lp-hero-stats">
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-1-num">100%</div><div class="label" id="lp-stat-1-label">Gratuito</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-2-num">15+</div><div class="label" id="lp-stat-2-label">Módulos</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-3-num">100 GB</div><div class="label" id="lp-stat-3-label">Banda Grátis</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-4-num">Open Source</div><div class="label" id="lp-stat-4-label">Código Aberto</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section">
+    <h2 class="lp-section-title"><i class="fas fa-cubes"></i> <span id="lp-features-title">Tudo que sua agência ou empresa precisa</span></h2>
+    <p class="lp-section-sub" id="lp-features-subtitle">Módulos integrados para gerenciar leads, projetos, equipe, finanças e operações em um único ecossistema.</p>
+    <div class="lp-features">
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(108,92,231,0.15);color:var(--primary)"><i class="fas fa-funnel-dollar"></i></div><h4>CRM de Vendas</h4><p>Capture e gerencie leads com funil de vendas visual, conversão automática em clientes e histórico completo de negociações.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-tasks"></i></div><h4>Projetos & Tarefas</h4><p>Organize projetos em quadros Kanban com drag-and-drop, prazos, prioridades e atribuição de equipe.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,176,255,0.15);color:var(--info)"><i class="fas fa-dollar-sign"></i></div><h4>Gestão Financeira</h4><p>Controle receitas e despesas, DRE mensal, fluxo de caixa, comissões e contratos com renovação automática.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,214,0,0.15);color:var(--warning)"><i class="fas fa-file-signature"></i></div><h4>Contratos</h4><p>Gestão completa de contratos com renovação periódica, histórico de valores e exportação em PDF.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(233,30,99,0.15);color:#E91E63"><i class="fas fa-calendar"></i></div><h4>Calendário Corporativo</h4><p>Agenda de eventos, prazos, reuniões e tarefas com visualização mensal e lembretes automáticos.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,188,212,0.15);color:#00BCD4"><i class="fas fa-chart-bar"></i></div><h4>Relatórios Gerenciais</h4><p>Relatórios detalhados de clientes, projetos e financeiro com gráficos dinâmicos e exportação CSV.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,152,0,0.15);color:#FF9800"><i class="fas fa-ad"></i></div><h4>Marketing Digital</h4><p>Integração com Meta Ads e Google Ads para acompanhar campanhas, gastos e ROI em tempo real.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-building"></i></div><h4>Empreendimentos</h4><p>Gestão de loteamentos e unidades com controle de vendas, corretores e comissões integrado.</p></div>
+    </div>
+  </section>
+
+  <div class="lp-int-bar">
+    <div class="lp-int-bar-inner">
+      <div class="lp-int-item"><i class="fab fa-meta"></i> Meta Ads</div>
+      <div class="lp-int-item"><i class="fab fa-google"></i> Google Ads</div>
+      <div class="lp-int-item"><i class="fab fa-whatsapp"></i> WhatsApp</div>
+      <div class="lp-int-item"><i class="fas fa-chart-pie"></i> Looker Studio</div>
+      <div class="lp-int-item"><i class="fas fa-file-pdf"></i> Exportação PDF</div>
+    </div>
+  </div>
+
+  <section class="lp-section" style="padding-top:10px">
+    <h2 class="lp-section-title"><i class="fas fa-boxes"></i> <span id="lp-plans-title">Planos de Serviço</span></h2>
+    <p class="lp-section-sub" id="lp-plans-subtitle">Soluções completas para gestão de marketing digital, vendas e operações da sua empresa.</p>
+    <div class="lp-plans">
+      <div class="lp-plan">
+        <div class="plan-icon"><i class="fas fa-rocket"></i></div>
+        <h4>Básico</h4>
+        <div class="price">R$ 1.490<span>/mês</span></div>
+        <div class="desc">Gestão de redes sociais com 8 posts/mês e relatório mensal.</div>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> 8 posts por mês</li>
+          <li><i class="fas fa-check-circle"></i> Relatório mensal de métricas</li>
+          <li><i class="fas fa-check-circle"></i> Suporte via WhatsApp</li>
+          <li><i class="fas fa-check-circle"></i> Agendamento de conteúdo</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" onclick="App.openLandingLogin()">Consultar</button>
+      </div>
+      <div class="lp-plan featured">
+        <div class="lp-plan-badge">Mais Popular</div>
+        <div class="plan-icon"><i class="fas fa-star"></i></div>
+        <h4>Profissional</h4>
+        <div class="price">R$ 2.990<span>/mês</span></div>
+        <div class="desc">Redes sociais + tráfego pago com R$500 em anúncios incluídos.</div>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> 12 posts por mês</li>
+          <li><i class="fas fa-check-circle"></i> R$500 em anúncios incluso</li>
+          <li><i class="fas fa-check-circle"></i> Relatório analítico completo</li>
+          <li><i class="fas fa-check-circle"></i> Suporte prioritário</li>
+          <li><i class="fas fa-check-circle"></i> Gestão de tráfego pago</li>
+        </ul>
+        <button class="btn btn-primary btn-sm" onclick="App.openLandingLogin()">Contratar</button>
+      </div>
+      <div class="lp-plan">
+        <div class="plan-icon"><i class="fas fa-crown"></i></div>
+        <h4>Enterprise</h4>
+        <div class="price">R$ 5.990<span>/mês</span></div>
+        <div class="desc">Pacote completo: social media, tráfego, design, site e consultoria.</div>
+        <ul>
+          <li><i class="fas fa-check-circle"></i> Posts ilimitados</li>
+          <li><i class="fas fa-check-circle"></i> R$1.500 em anúncios</li>
+          <li><i class="fas fa-check-circle"></i> Criação de conteúdo</li>
+          <li><i class="fas fa-check-circle"></i> Site institucional</li>
+          <li><i class="fas fa-check-circle"></i> Consultoria estratégica</li>
+          <li><i class="fas fa-check-circle"></i> Suporte 24/7 dedicado</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" onclick="App.openLandingLogin()">Consultar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-cta">
+    <h2 id="lp-cta-title"><i class="fas fa-crown" style="color:var(--primary)"></i> Pronto para transformar sua gestão?</h2>
+    <p id="lp-cta-subtitle">Junte-se a centenas de agências e empresas que já utilizam o Promake Ecosystem.</p>
+    <button class="btn btn-primary" onclick="App.openLandingLogin()" id="lp-cta-btn"><i class="fas fa-rocket"></i> <span>Começar Agora</span></button>
+  </section>
+
+  <footer class="lp-footer">
+    <p id="lp-footer-text"><i class="fas fa-crown" style="color:var(--primary)"></i> <strong>Promake Ecosystem</strong> &mdash; Gestão para Agências Digitais, Negócios e Empresas &mdash; <span id="lpYear"></span></p>
+    <p style="margin-top:6px;font-size:11px">Versão 1.0 &mdash; <a href="#" onclick="App.openLandingLogin()">Acessar o Sistema</a></p>
+  </footer>
+</div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <button class="login-close" onclick="App.closeLandingLogin()"><i class="fas fa-times"></i></button>
+    <h1><i class="fas fa-crown"></i> Promake</h1>
+    <p>Faça login no sistema de gestão</p>
+      <form id="loginForm" autocomplete="off">
+        <div class="form-group"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="off"></div>
+        <div class="form-group">
+          <label>Senha</label>
+          <div style="position:relative">
+            <input type="password" id="loginPassword" placeholder="Digite sua senha" style="padding-right:44px" autocomplete="new-password" data-lpignore="true">
+            <button type="button" id="toggleSenha" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px;font-size:16px" onclick="App.togglePassword()"><i class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:var(--text-muted)">
+        <input type="checkbox" id="rememberUser" style="accent-color:var(--primary)">
+        <label for="rememberUser">Lembrar usuário</label>
+      </div>
+      <button type="button" class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      <div class="login-error" id="loginError">Credenciais inválidas.</div>
+    </form>
+    <div class="login-hint"><i class="fas fa-shield-alt"></i> Demo: <strong>admin@promake.com</strong> / <strong>admin123</strong></div>
+  </div>
+</div>
+
+<div id="app">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand" id="sidebarBrand" onclick="App.uploadLogo()">
+      <div class="brand-logo" id="brandLogo"><i class="fas fa-crown"></i></div>
+      <span>Promake Ecosystem</span>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></div>
+      <div class="nav-section" data-section="gestao">
+        <div class="nav-section-header" onclick="App.toggleNavSection('gestao')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Gestão</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="leads"><i class="fas fa-funnel-dollar"></i><span>CRM / Leads</span></div>
+          <div class="nav-item" data-page="clients"><i class="fas fa-users"></i><span>Clientes</span></div>
+          <div class="nav-item" data-page="contracts"><i class="fas fa-file-signature"></i><span>Contratos</span></div>
+          <div class="nav-item" data-page="finance"><i class="fas fa-dollar-sign"></i><span>Financeiro</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="operacional">
+        <div class="nav-section-header" onclick="App.toggleNavSection('operacional')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Operacional</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="projects"><i class="fas fa-tasks"></i><span>Projetos</span></div>
+          <div class="nav-item" data-page="kanban"><i class="fas fa-columns"></i><span>Kanban</span></div>
+          <div class="nav-item" data-page="services"><i class="fas fa-clipboard-list"></i><span>Ordem de serviço</span></div>
+          <div class="nav-item" data-page="permissions"><i class="fas fa-shield-alt"></i><span>Permissões</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="planejamento">
+        <div class="nav-section-header" onclick="App.toggleNavSection('planejamento')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Planejamento</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="reports"><i class="fas fa-chart-bar"></i><span>Relatorios</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="marketing">
+        <div class="nav-section-header" onclick="App.toggleNavSection('marketing')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Marketing</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="marketing"><i class="fas fa-ad"></i><span>Marketing</span></div>
+          <div class="nav-item" data-page="whatsapp"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></div>
+          <div class="nav-item" data-page="integracoes"><i class="fas fa-plug"></i><span>Integracoes</span></div>
+          <div class="nav-item" data-page="team"><i class="fas fa-user-friends"></i><span>Equipe</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="ferramentas">
+        <div class="nav-section-header" onclick="App.toggleNavSection('ferramentas')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Ferramentas</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" onclick="window.open('/jarvis','_blank')"><i class="fas fa-microphone"></i><span>Jarvis Voz</span></div>
+          <div class="nav-item" onclick="App.toggleMusicPlayer()"><i class="fas fa-music"></i><span>Player</span></div>
+          <div class="nav-item" data-page="design"><i class="fas fa-paint-brush"></i><span>Painel Criativo</span></div>
+          <div class="nav-item" data-page="notes"><i class="fas fa-sticky-note"></i><span>Notas</span></div>
+          <div class="nav-item" data-page="calendar"><i class="fas fa-calendar"></i><span>Calendario</span></div>
+          <div class="nav-item" data-page="calculator"><i class="fas fa-calculator"></i><span>Calculadora</span></div>
+          <div class="nav-item" data-page="spotify"><i class="fab fa-spotify"></i><span>Spotify</span></div>
+          <div class="nav-item" data-page="festefe"><i class="fas fa-ticket-alt"></i><span>Chamado Festefe</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="sistema">
+        <div class="nav-section-header" onclick="App.toggleNavSection('sistema')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Sistema</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="systems"><i class="fas fa-globe"></i><span>Sistemas</span></div>
+          <div class="nav-item" data-page="plans"><i class="fas fa-box"></i><span>Planos</span></div>
+          <div class="nav-item" data-page="developments"><i class="fas fa-building"></i><span>Empreendimentos</span></div>
+          <div class="nav-item" data-page="slides"><i class="fas fa-images"></i><span>Slides</span></div>
+          <div class="nav-item" data-page="landing"><i class="fas fa-palette"></i><span>Landing Page</span></div>
+        </div>
+      </div>
+      <div class="nav-item" data-page="chat"><i class="fas fa-robot"></i><span>Assistente AI</span></div>
+      <div class="nav-item" data-page="activity"><i class="fas fa-history"></i><span>Logs</span></div>
+      <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>Configuracoes</span></div>
+      <div class="sidebar-version"><strong>Promake Ecosystem Versão 1.0</strong></div>
+    </div>
+    <div class="sidebar-footer" onclick="App.logout()"><i class="fas fa-sign-out-alt"></i><span>Sair</span></div>
+  </nav>
+  <div class="sidebar-overlay" onclick="App.toggleSidebar()"></div>
+
+  <div class="main">
+    <header class="header">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="mobile-toggle" onclick="App.toggleSidebar()"><i class="fas fa-chevron-left"></i></button>
+        <h2 id="pageTitle"><i class="fas fa-chart-pie"></i> Dashboard</h2>
+      </div>
+      <div class="header-right">
+        <span id="storageInfo" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;border:1px solid var(--border)"></span>
+        <button class="notif-btn" onclick="App.toggleFaturamento()" title="Mostrar/Ocultar valores" id="toggleFaturamento">
+          <i class="fas fa-eye"></i>
+        </button>
+        <button class="notif-btn" onclick="App.toggleLang()" title="Idioma" id="langBtn"><img src="img/flag-br.svg" style="width:20px;height:20px;border-radius:3px;vertical-align:middle"></button>
+        <button class="notif-btn" onclick="App.toggleTheme()" title="Alternar tema" id="themeBtn">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="notif-btn" onclick="App.toggleNotifications()" title="Notificações">
+          <i class="fas fa-bell"></i><span class="badge" id="notifBadge">0</span>
+        </button>
+        <div class="header-user" onclick="App.loadPage('settings')">
+          <div class="header-avatar" id="userAvatar">A</div>
+          <span id="userName">Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page active" id="page-dashboard">
+        <div class="dash-top">
+          <div class="cards-grid" id="dashCards"></div>
+          <div class="globe-area">
+            <canvas id="globeCanvas" width="200" height="200"></canvas>
+            <div class="globe-info"><span class="status-dot"></span> Status: sistema on</div>
+            <div class="globe-info" id="globeVisits"><i class="fas fa-eye"></i> <span>0</span></div>
+            <div class="globe-info" id="globeUptime"><i class="fas fa-clock"></i> <span>--</span></div>
+          <canvas id="globeEarth" width="200" height="200"></canvas>
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card"><h3><i class="fas fa-chart-area"></i> Receita vs Despesas</h3><canvas id="revenueChart"></canvas></div>
+          <div class="chart-card"><h3><i class="fas fa-chart-doughnut"></i> Projetos por Status</h3><canvas id="statusChart"></canvas></div>
+        </div>
+        <div class="charts-grid-2">
+          <div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Projetos por Tipo</h3><canvas id="typeChart"></canvas></div>
+          <div class="chart-card"><h3><i class="fas fa-chart-line"></i> Leads por Status</h3><canvas id="leadsChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-clock"></i> Deadline</h3>
+          <div class="table-container"><table><thead><tr><th>Projeto</th><th>Cliente</th><th>Status</th><th>Prazo</th><th>Valor</th></tr></thead><tbody id="dashRecentProjects"></tbody></table></div>
+        </div>
+        <div class="chart-card">
+          <h3><i class="fas fa-history"></i> Atividades Recentes</h3>
+          <div class="table-container"><table><thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Descrição</th></tr></thead><tbody id="dashRecentActivities"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-leads">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="leadSearch" placeholder="Buscar lead..."></div>
+            <div class="filter-group">
+              <select id="leadStatusFilter"><option value="todos">Todos Status</option><option value="novo">Novo</option><option value="contato">Contato</option><option value="qualificado">Qualificado</option><option value="proposta">Proposta</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select>
+              <select id="leadSourceFilter"><option value="todos">Todas Origens</option></select>
+            </div>
+          </div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openLeadModal()"><i class="fas fa-plus"></i> Novo Lead</button></div>
+        </div>
+        <div class="funnel" id="leadFunnel"></div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>Contato</th><th>Empresa</th><th>Origem</th><th>Status</th><th>Valor</th><th>Acoes</th></tr></thead><tbody id="leadsTable"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-clients">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="clientSearch" placeholder="Buscar cliente..."></div>
+            <div class="filter-group"><select id="clientStatusFilter"><option value="todos">Todos</option><option value="active">Ativo</option><option value="inactive">Inativo</option></select></div>
+          </div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openClientModal()"><i class="fas fa-plus"></i> Novo Cliente</button></div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Empresa</th><th>Status</th><th>Projetos</th><th>Acoes</th></tr></thead><tbody id="clientsTable"></tbody></table></div></div>
+        <div id="clientPlansPanel" style="display:none;margin-top:16px">
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <h4 style="margin:0" id="clientPlansTitle">Planos do Cliente</h4>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm" onclick="App.openClientPlanModal(document.getElementById('clientPlansClientId').value)"><i class="fas fa-plus"></i> Vincular Plano</button>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('clientPlansPanel').style.display='none'"><i class="fas fa-times"></i> Fechar</button>
+              </div>
+            </div>
+            <input type="hidden" id="clientPlansClientId">
+            <div id="clientPlansList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-projects">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="projectSearch" placeholder="Buscar projeto..."></div>
+            <div class="filter-group">
+              <select id="projectStatusFilter"><option value="todos">Todos Status</option><option value="pending">Pendente</option><option value="active">Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select>
+              <select id="projectTypeFilter"><option value="todos">Todos Tipos</option></select>
+            </div>
+          </div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openProjectModal()"><i class="fas fa-plus"></i> Novo Projeto</button></div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Projeto</th><th>Cliente</th><th>Tipo</th><th>Status</th><th>Prazo</th><th>Valor</th><th>Arquivo</th><th>Acoes</th></tr></thead><tbody id="projectsTable"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-kanban">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-columns"></i> Quadro Kanban</h3></div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.loadPage('projects')"><i class="fas fa-plus"></i> Novo Projeto</button></div>
+        </div>
+        <div class="kanban-board" id="kanbanBoard"></div>
+      </div>
+
+      <div class="page" id="page-services">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="filter-group">
+              <select id="soStatusFilter"><option value="todos">Todos Status</option><option value="pending">Pendente</option><option value="active">Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select>
+              <select id="soProjectFilter"><option value="">Todos Projetos</option></select>
+            </div>
+          </div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openSOModal()"><i class="fas fa-plus"></i> Nova OS</button></div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>OS</th><th>Projeto</th><th>Prioridade</th><th>Status</th><th>Responsavel</th><th>Prazo</th><th>Arquivo</th><th>Acoes</th></tr></thead><tbody id="servicesTable"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-contracts">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="contractSearch" placeholder="Buscar contrato..."></div>
+            <div class="filter-group"><select id="contractStatusFilter"><option value="todos">Todos</option><option value="active">Ativo</option><option value="expired">Expirado</option><option value="cancelled">Cancelado</option></select></div>
+          </div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openContractModal()"><i class="fas fa-plus"></i> Novo Contrato</button></div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Titulo</th><th>Cliente</th><th>Valor</th><th>Inicio</th><th>Fim</th><th>Renovacao</th><th>Status</th><th>Arquivo</th><th>Acoes</th></tr></thead><tbody id="contractsTable"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-finance">
+        <div class="tabs">
+          <div class="tab active" data-tab="transactions">Transações</div>
+          <div class="tab" data-tab="dre">DRE</div>
+          <div class="tab" data-tab="commissions">Comissoes</div>
+        </div>
+        <div id="finTransactions">
+          <div class="finance-summary">
+            <div class="finance-item"><div class="label">Receita do Mes</div><div class="value positive" id="finRevenueMonth">R$ 0</div></div>
+            <div class="finance-item"><div class="label">Despesas do Mes</div><div class="value negative" id="finExpensesMonth">R$ 0</div></div>
+            <div class="finance-item"><div class="label">Lucro do Mes</div><div class="value" id="finProfitMonth">R$ 0</div></div>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="search-box"><i class="fas fa-search"></i><input type="text" id="financeSearch" placeholder="Buscar..."></div>
+              <div class="filter-group">
+                <select id="finTypeFilter"><option value="todos">Todos</option><option value="income">Receita</option><option value="expense">Despesa</option></select>
+                <select id="finCategoryFilter"><option value="todos">Todas Categorias</option></select>
+                <input type="date" id="finStartDate"><span style="color:var(--text-muted);font-size:12px">ate</span><input type="date" id="finEndDate">
+              </div>
+            </div>
+            <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openTransactionModal()"><i class="fas fa-plus"></i> Nova Transacao</button></div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Descricao</th><th>Tipo</th><th>Categoria</th><th>Valor</th><th>Metodo</th><th>Status</th><th>Arquivo</th><th>Acoes</th></tr></thead><tbody id="financeTable"></tbody></table></div></div>
+        </div>
+        <div id="finDre" style="display:none">
+          <div class="toolbar"><select id="dreYear"></select></div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Mes</th><th>Receita</th><th>Despesas</th><th>Lucro</th><th>Margem</th></tr></thead><tbody id="dreTable"></tbody></table></div></div>
+        </div>
+        <div id="finCommissions" style="display:none">
+          <div class="card"><div class="table-container"><table><thead><tr><th>Usuario</th><th>Projeto</th><th>Valor</th><th>%</th><th>Comissao</th><th>Status</th></tr></thead><tbody id="commissionsTable"></tbody></table></div></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-calendar">
+        <div class="calendar-nav">
+          <button class="btn btn-outline btn-sm" onclick="App.calendarPrev()"><i class="fas fa-chevron-left"></i></button>
+          <h3 id="calendarTitle">Maio 2026</h3>
+          <button class="btn btn-outline btn-sm" onclick="App.calendarNext()"><i class="fas fa-chevron-right"></i></button>
+          <button class="btn btn-primary btn-sm" onclick="App.openEventModal()" style="margin-left:auto"><i class="fas fa-plus"></i> Novo Evento</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div id="calendarEvents" class="chart-card" style="margin-top:16px">
+          <h3><i class="fas fa-list"></i> Eventos do Dia</h3>
+          <div id="calendarDayEvents">Selecione um dia no calendário</div>
+        </div>
+      </div>
+
+      <div class="page" id="page-calculator">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <h2 style="margin:0"><i class="fas fa-calculator"></i> Calculadora</h2>
+        </div>
+        <div class="chart-card" style="max-width:360px;padding:20px">
+          <button class="btn btn-outline btn-sm" onclick="App.loadPage('dashboard')" title="Fechar" style="margin-bottom:12px;width:100%"><i class="fas fa-times"></i> Fechar Calculadora</button>
+          <div id="calcDisplay" style="background:var(--bg);padding:16px;border-radius:8px;text-align:right;font-size:28px;font-weight:700;margin-bottom:12px;min-height:48px;overflow:hidden;font-family:monospace;border:1px solid var(--border);transition:all .1s">0</div>
+          <div class="calc-buttons" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <button class="btn calc-op" onclick="App.calcInput('C')" style="background:var(--danger);color:#fff">C</button>
+            <button class="btn calc-op" onclick="App.calcInput('CE')" style="background:var(--danger);color:#fff">CE</button>
+            <button class="btn calc-op" onclick="App.calcInput('%')" style="background:#f97316;color:#fff">%</button>
+            <button class="btn calc-op" onclick="App.calcInput('/')" style="background:var(--primary);color:#fff">÷</button>
+            <button class="btn calc-num" onclick="App.calcInput('7')">7</button>
+            <button class="btn calc-num" onclick="App.calcInput('8')">8</button>
+            <button class="btn calc-num" onclick="App.calcInput('9')">9</button>
+            <button class="btn calc-op" onclick="App.calcInput('*')" style="background:var(--primary);color:#fff">×</button>
+            <button class="btn calc-num" onclick="App.calcInput('4')">4</button>
+            <button class="btn calc-num" onclick="App.calcInput('5')">5</button>
+            <button class="btn calc-num" onclick="App.calcInput('6')">6</button>
+            <button class="btn calc-op" onclick="App.calcInput('-')" style="background:var(--primary);color:#fff">−</button>
+            <button class="btn calc-num" onclick="App.calcInput('1')">1</button>
+            <button class="btn calc-num" onclick="App.calcInput('2')">2</button>
+            <button class="btn calc-num" onclick="App.calcInput('3')">3</button>
+            <button class="btn calc-op" onclick="App.calcInput('+')" style="background:var(--primary);color:#fff">+</button>
+            <button class="btn calc-num" onclick="App.calcInput('0')" style="grid-column:span 2">0</button>
+            <button class="btn calc-num" onclick="App.calcInput('.')">.</button>
+            <button class="btn calc-op" onclick="App.calcInput('=')" style="background:var(--success);color:#fff">=</button>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:4px;font-size:12px;color:var(--text-muted)">
+            <span id="calcHistory" style="flex:1;text-align:right"></span>
+          </div>
+        </div>
+      </div>
+      <style>
+        .calc-buttons .btn{position:relative;overflow:hidden;transition:transform .12s,box-shadow .12s;user-select:none}
+        .calc-buttons .btn:active{transform:scale(.92);box-shadow:inset 0 2px 8px rgba(0,0,0,.25)}
+        .calc-num{background:var(--card-bg);color:var(--text)}
+        .calc-num:hover{background:var(--bg)}
+        .calc-op:hover{filter:brightness(1.1)}
+        #calcDisplay.flash{transform:scale(1.03)}
+      </style>
+
+      <div class="page" id="page-reports">
+        <div class="tabs">
+          <div class="tab active" data-tab="report-overview">Visao Geral</div>
+          <div class="tab" data-tab="report-clients">Clientes</div>
+          <div class="tab" data-tab="report-projects">Projetos</div>
+          <div class="tab" data-tab="report-financial">Financeiro</div>
+        </div>
+        <div id="reportOverview">
+          <div class="grid-3" id="reportCards"></div>
+          <div class="charts-grid-2">
+            <div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Projetos por Status e Tipo</h3><canvas id="reportProjectsChart"></canvas></div>
+            <div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Top Clientes por Receita</h3><canvas id="reportClientsChart"></canvas></div>
+          </div>
+        </div>
+        <div id="reportClients" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0">Relatorio de Clientes</h3></div>
+            <div class="toolbar-right"><button class="btn btn-sm btn-outline" onclick="App.exportReport('clients')"><i class="fas fa-download"></i> Exportar CSV</button></div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Cliente</th><th>Empresa</th><th>Projetos</th><th>Ativos</th><th>Receita Total</th><th>Receita no Mes</th></tr></thead><tbody id="reportClientsTable"></tbody></table></div></div>
+        </div>
+        <div id="reportProjects" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0">Relatorio de Projetos</h3></div>
+            <div class="toolbar-right"><button class="btn btn-sm btn-outline" onclick="App.exportReport('projects')"><i class="fas fa-download"></i> Exportar CSV</button></div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Status</th><th>Tipo</th><th>Total</th><th>Valor Total</th><th>Valor Medio</th></tr></thead><tbody id="reportProjectsTable"></tbody></table></div></div>
+        </div>
+        <div id="reportFinancial" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0">Relatorio Financeiro</h3></div>
+            <div class="toolbar-right"><button class="btn btn-sm btn-outline" onclick="App.exportReport('financial')"><i class="fas fa-download"></i> Exportar CSV</button></div>
+          </div>
+          <div class="grid-3" id="finReportCards"></div>
+          <div class="chart-card"><h3><i class="fas fa-chart-area"></i> Receita vs Despesas (Anual)</h3><canvas id="finReportChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-marketing">
+        <div class="tabs">
+          <div class="tab active" data-tab="mkt-meta">Meta Ads</div>
+          <div class="tab" data-tab="mkt-google">Google Ads</div>
+        </div>
+        <div id="mkt-meta">
+          <div id="mktMetaNotConfigured" style="display:none">
+            <div class="empty-state"><i class="fab fa-facebook" style="font-size:48px;opacity:0.3"></i><h3>Meta Ads não configurado</h3><p style="color:var(--text-muted);margin-bottom:16px">Configure o token de acesso em Configurações > Integrações</p><button class="btn btn-primary" onclick="App.loadPage('settings')"><i class="fas fa-cog"></i> Configurar</button></div>
+          </div>
+          <div id="mktMetaContent" style="display:none">
+            <div class="cards-grid" id="mktMetaCards"></div>
+            <div class="chart-card" style="margin-bottom:20px"><h3><i class="fas fa-chart-area"></i> Desempenho Diario</h3><canvas id="mktMetaDailyChart"></canvas></div>
+            <div class="card"><div class="table-container"><table><thead><tr><th>Campanha</th><th>Gasto</th><th>Impressoes</th><th>Cliques</th><th>CTR</th><th>CPC</th><th>CPM</th></tr></thead><tbody id="mktMetaTable"></tbody></table></div></div>
+          </div>
+        </div>
+        <div id="mkt-google" style="display:none">
+          <div id="mktGoogleNotConfigured" style="display:none">
+            <div class="empty-state"><i class="fab fa-google" style="font-size:48px;opacity:0.3"></i><h3>Google Ads não configurado</h3><p style="color:var(--text-muted);margin-bottom:16px">Configure as credenciais OAuth em Configurações > Integrações</p><button class="btn btn-primary" onclick="App.loadPage('settings')"><i class="fas fa-cog"></i> Configurar</button></div>
+          </div>
+          <div id="mktGoogleContent" style="display:none">
+            <div class="cards-grid" id="mktGoogleCards"></div>
+            <div class="card"><div class="table-container"><table><thead><tr><th>Campanha</th><th>Status</th><th>Gasto</th><th>Impressoes</th><th>Cliques</th><th>CTR</th><th>CPC</th></tr></thead><tbody id="mktGoogleTable"></tbody></table></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-activity">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-history"></i> Atividades Recentes</h3></div>
+          <div class="toolbar-right">
+            <select id="activityEntityFilter" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px" onchange="App.renderActivityLog()">
+              <option value="">Todas entidades</option>
+              <option value="cliente">Clientes</option>
+              <option value="projeto">Projetos</option>
+              <option value="lead">Leads</option>
+            </select>
+          </div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Usuario</th><th>Acao</th><th>Tipo</th><th>Descricao</th></tr></thead><tbody id="activityTable"></tbody></table></div></div>
+      </div>
+
+      <div class="page" id="page-integracoes">
+        <div class="tabs">
+          <div class="tab active" data-tab="int-wa">WhatsApp</div>
+          <div class="tab" data-tab="int-meta">Meta Ads</div>
+          <div class="tab" data-tab="int-google">Google Ads</div>
+          <div class="tab" data-tab="int-looker">Looker Studio</div>
+        </div>
+        <div id="int-wa">
+          <h3 style="margin-bottom:16px"><i class="fab fa-whatsapp"></i> Configuração WhatsApp</h3>
+          <div style="margin-bottom:16px;padding:12px;border-radius:8px;background:rgba(108,92,231,0.08);display:flex;align-items:center;gap:10px;font-size:13px">
+            <i id="intWaStatusIcon" class="fas fa-times-circle" style="color:var(--danger)"></i>
+            <span id="intWaStatusText">Verificando...</span>
+          </div>
+          <div class="form-group"><label>URL do Webhook</label><input type="url" id="intWaWebhookUrl" placeholder="https://api.z-api.io/v2/instances/.../token/.../send-text" class="input-w"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Chave de API</label><input type="text" id="intWaApiKey" placeholder="Token ou chave" class="input-w"></div>
+            <div class="form-group"><label>Header da chave</label><input type="text" id="intWaApiKeyHeader" value="Authorization" class="input-w"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Metodo HTTP</label><select id="intWaMethod" class="input-w"><option value="POST">POST</option><option value="GET">GET</option></select></div>
+            <div class="form-group"><label>Template do corpo JSON</label><input type="text" id="intWaBodyTemplate" value='{"phone":"{{phone}}","message":"{{message}}"}' class="input-w"></div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Use <code>{{phone}}</code> e <code>{{message}}</code> como placeholders.</p>
+          <button class="btn btn-primary" onclick="App.saveIntWhatsAppConfig()"><i class="fas fa-save"></i> Salvar WhatsApp</button>
+        </div>
+        <div id="int-meta" style="display:none">
+          <h3 style="margin-bottom:16px"><i class="fab fa-facebook"></i> Configuração Meta Ads</h3>
+          <div class="form-group"><label>Token de Acesso (Meta Ads)</label><input type="text" id="intMetaAccessToken" placeholder="EAA..." class="input-w" style="word-break:break-all"></div>
+          <div class="form-group"><label>ID da Conta de Anuncio</label><input type="text" id="intMetaAdAccountId" placeholder="Ex: 123456789" class="input-w"></div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Gere um token em <code>developers.facebook.com</code> com permissão <code>ads_read</code>.</p>
+          <button class="btn btn-primary" onclick="App.saveIntMetaAdsConfig()"><i class="fas fa-save"></i> Salvar Meta Ads</button>
+        </div>
+        <div id="int-google" style="display:none">
+          <h3 style="margin-bottom:16px"><i class="fab fa-google"></i> Configuração Google Ads</h3>
+          <div class="form-group"><label>Customer ID</label><input type="text" id="intGoogleCustomerId" placeholder="123-456-7890" class="input-w"></div>
+          <div class="form-group"><label>Developer Token</label><input type="text" id="intGoogleDevToken" placeholder="" class="input-w"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Client ID (OAuth)</label><input type="text" id="intGoogleClientId" placeholder="" class="input-w"></div>
+            <div class="form-group"><label>Client Secret</label><input type="text" id="intGoogleClientSecret" placeholder="" class="input-w"></div>
+          </div>
+          <div class="form-group"><label>Refresh Token</label><input type="text" id="intGoogleRefreshToken" placeholder="" class="input-w"></div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Configure o projeto no Google Cloud, habilite a Google Ads API e gere as credenciais OAuth 2.0.</p>
+          <button class="btn btn-primary" onclick="App.saveIntGoogleAdsConfig()"><i class="fas fa-save"></i> Salvar Google Ads</button>
+        </div>
+        <div id="int-looker" style="display:none">
+          <h3 style="margin-bottom:16px"><i class="fas fa-chart-pie"></i> Configuração Looker Studio</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Cole o link do seu relatório do Looker Studio para acessar diretamente do sistema.</p>
+          <div class="form-group"><label>URL do Relatorio</label><input type="url" id="intLookerUrl" placeholder="https://lookerstudio.google.com/reporting/..." class="input-w"></div>
+          <div class="form-group"><label>Nome do Relatorio</label><input type="text" id="intLookerName" placeholder="Ex: Dashboard Financeiro" class="input-w"></div>
+          <div id="intLookerStatus" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:none"></div>
+          <button class="btn btn-primary" onclick="App.saveIntLookerConfig()"><i class="fas fa-save"></i> Salvar Looker Studio</button>
+          <div id="lookerEmbedPreview" style="display:none;margin-top:20px;width:100%;height:500px;border-radius:12px;overflow:hidden">
+            <iframe id="lookerIframe" style="width:100%;height:100%;border:none;border-radius:12px" allowfullscreen allow="clipboard-write; fullscreen"></iframe>
+            <div style="margin-top:8px;text-align:center">
+              <a id="lookerOpenNewTab" href="#" target="_blank" style="font-size:12px;color:var(--primary);text-decoration:none"><i class="fas fa-external-link-alt"></i> Abrir em nova aba</a>
+              <span style="margin:0 8px;color:var(--text-muted)">|</span>
+              <span id="lookerEmbedError" style="font-size:12px;color:var(--danger);display:none"><i class="fas fa-exclamation-triangle"></i> Nao foi possivel carregar. Verifique se o relatorio permite incorporacao.</span>
+            </div>
+          </div>
+        </div>
+        <style>.input-w{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px}</style>
+      </div>
+
+      <div class="page" id="page-whatsapp">
+        <div class="tabs">
+          <div class="tab active" data-tab="wa-send">Enviar Mensagem</div>
+          <div class="tab" data-tab="wa-templates">Templates</div>
+          <div class="tab" data-tab="wa-history">Histórico</div>
+        </div>
+        <div id="wa-send">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="filter-group">
+                <select id="waEntityType" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+                  <option value="lead">Leads</option>
+                  <option value="client">Clientes</option>
+                </select>
+                <select id="waEntityId" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;min-width:200px">
+                  <option value="">Selecione</option>
+                </select>
+              </div>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-outline btn-sm" onclick="App.loadWALog()"><i class="fas fa-sync"></i> Atualizar</button>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px">
+            <div class="form-group">
+              <label>Telefone (com codigo pais)</label>
+              <input type="text" id="waPhone" placeholder="5511999999999" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px">
+            </div>
+            <div class="form-group">
+              <label>Template (opcional)</label>
+              <select id="waTemplateSelect" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px">
+                <option value="">Sem template</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Mensagem</label>
+              <textarea id="waMessage" rows="4" placeholder="Digite a mensagem..." style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:vertical"></textarea>
+            </div>
+            <div id="waSendStatus" style="font-size:13px;margin-bottom:12px;display:none"></div>
+            <button class="btn btn-primary" onclick="App.sendWhatsApp()"><i class="fab fa-whatsapp"></i> Enviar</button>
+          </div>
+        </div>
+        <div id="wa-templates" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-file-alt"></i> Templates de Mensagem</h3></div>
+            <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openWATemplateModal()"><i class="fas fa-plus"></i> Novo Template</button></div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>Conteudo</th><th>Criado em</th><th>Acoes</th></tr></thead><tbody id="waTemplatesTable"></tbody></table></div></div>
+        </div>
+        <div id="wa-history" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-history"></i> Histórico de Disparos</h3></div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Telefone</th><th>Mensagem</th><th>Status</th><th>Resposta</th></tr></thead><tbody id="waLogTable"></tbody></table></div></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-team">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-user-friends"></i> Equipe</h3></div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openUserModal()"><i class="fas fa-plus"></i> Novo Membro</button></div>
+        </div>
+        <div class="cards-grid" id="teamCards"></div>
+      </div>
+
+      <div class="page" id="page-permissions">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-shield-alt"></i> Permissões da Equipe</h3></div>
+        </div>
+        <div class="card" id="permissionsContainer">
+          <div class="table-container"><table><thead><tr><th>Membro</th><th>Cargo</th><th>Acesso</th><th>Ações</th></tr></thead><tbody id="permissionsTable"></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="page" id="page-systems">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-globe"></i> Portais para Clientes</h3></div>
+          <div class="toolbar-right"><button class="btn btn-primary btn-sm" onclick="App.openSystemModal()"><i class="fas fa-plus"></i> Novo Sistema</button></div>
+        </div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>Cliente</th><th>Slug</th><th>Status</th><th>Link</th><th>Acoes</th></tr></thead><tbody id="systemsTable"></tbody></table></div></div>
+        <div id="systemsModulesSection" style="display:none;margin-top:16px">
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h4 style="margin:0">Modulos do Sistema</h4>
+              <button class="btn btn-sm btn-outline" onclick="App.hideSystemModules()"><i class="fas fa-arrow-left"></i> Voltar</button>
+            </div>
+            <div id="systemsModulesToggles" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-plans">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-box"></i> Planos de Serviço</h3></div>
+        </div>
+        <div class="grid-3" id="plansGrid"></div>
+      </div>
+
+      <div class="page" id="page-developments">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-building"></i> Empreendimentos</h3></div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="App.openDevModal()"><i class="fas fa-plus"></i> Novo Empreendimento</button>
+          </div>
+        </div>
+        <div class="card" id="developmentsContainer">
+          <div class="table-container"><table><thead><tr><th>Empreendimento</th><th>Construtora</th><th>Status</th><th>Unidades</th><th>Previsão Entrega</th><th>Ações</th></tr></thead><tbody id="developmentsTable"></tbody></table></div>
+        </div>
+        <div id="devDetailContainer" style="display:none;margin-top:20px">
+          <div class="toolbar">
+            <div class="toolbar-left"><h3 style="margin:0" id="devDetailTitle"></h3></div>
+            <div class="toolbar-right">
+              <button class="btn btn-outline btn-sm" onclick="App.backToDevList()"><i class="fas fa-arrow-left"></i> Voltar</button>
+              <button class="btn btn-primary btn-sm" onclick="App.openUnitModal()"><i class="fas fa-plus"></i> Nova Unidade</button>
+            </div>
+          </div>
+          <div class="card"><div class="table-container"><table><thead><tr><th>Unidade</th><th>Torre</th><th>Bloco</th><th>Área</th><th>Quartos</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead><tbody id="unitsTable"></tbody></table></div></div>
+          <div class="card" style="margin-top:16px">
+            <h4 style="margin-bottom:12px"><i class="fas fa-users"></i> Corretores com Acesso</h4>
+            <div id="brokerDevList"></div>
+          </div>
+        </div>
+      </div>
+        <div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))" id="plansContainer"></div>
+      </div>
+
+      <div class="page" id="page-slides">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-images"></i> Slides / Banner</h3></div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="App.openSlideModal()"><i class="fas fa-plus"></i> Novo Slide</button>
+          </div>
+        </div>
+        <div class="card"><div id="slidesContainer"></div></div>
+        <div style="margin-top:12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-muted)">
+          <i class="fas fa-info-circle"></i> Os slides aparecem no banner principal da landing page. Apenas administradores podem gerenciar. Use o botão "Enviar Imagem" no formulário para fazer upload direto.
+        </div>
+      </div>
+
+      <div class="page" id="page-landing">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fas fa-palette"></i> Editar Landing Page</h3></div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary btn-sm" onclick="App.saveLandingConfig()"><i class="fas fa-save"></i> Salvar Tudo</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;padding-bottom:40px" id="landingEditorContainer"></div>
+      </div>
+
+      <div class="page" id="page-chat">
+        <div style="display:flex;flex-direction:column;height:calc(100vh - 140px)">
+          <div style="flex:1;overflow-y:auto;padding:16px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:16px;display:flex;flex-direction:column;gap:12px" id="chatMessages">
+            <div style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+              <i class="fas fa-robot" style="font-size:48px;margin-bottom:16px;color:var(--primary);opacity:0.4"></i>
+              <h3 style="color:var(--text);margin-bottom:8px">Assistente AI Promake</h3>
+              <p style="font-size:13px">Pergunte sobre clientes, projetos, finanças e muito mais!</p>
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+                <button class="btn btn-sm btn-outline" onclick="App.quickChat('Quantos clientes temos?')">📊 Clientes</button>
+                <button class="btn btn-sm btn-outline" onclick="App.quickChat('Qual o faturamento?')">💰 Faturamento</button>
+                <button class="btn btn-sm btn-outline" onclick="App.quickChat('Resumo dos projetos')">📋 Projetos</button>
+                <button class="btn btn-sm btn-outline" onclick="App.quickChat('Como está a equipe?')">👥 Equipe</button>
+                <button class="btn btn-sm btn-outline" onclick="App.quickChat('ajuda')">🤖 Ajuda</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1;position:relative">
+              <textarea id="chatInput" rows="2" placeholder="Digite sua mensagem..." style="width:100%;padding:12px 16px;padding-right:48px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-family:inherit;resize:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();App.sendChat()}"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="App.sendChat()" id="chatSendBtn" style="padding:12px 20px;border-radius:12px;height:52px"><i class="fas fa-paper-plane"></i></button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center">
+            <i class="fas fa-info-circle"></i> 
+            <span id="chatStatus">Assistente local</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-settings">
+        <div style="text-align:center;padding:20px;color:var(--text-muted)">
+          <i class="fas fa-cog" style="font-size:48px;margin-bottom:16px;color:var(--primary);opacity:0.4"></i>
+          <h3 style="color:var(--text);margin-bottom:8px;font-size:18px">Configurações do Sistema</h3>
+          <p style="margin-bottom:24px;font-size:13px">Personalize sua experiencia</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;max-width:600px;margin:0 auto;text-align:left">
+            <div class="card card-hover" onclick="App.openSettings('perfil')"><div class="card-icon purple"><i class="fas fa-user"></i></div><div class="card-label">Perfil</div><div style="font-size:12px;color:var(--text-muted)">Nome, email, avatar</div></div>
+            <div class="card card-hover" onclick="App.openSettings('notificacoes')"><div class="card-icon green"><i class="fas fa-bell"></i></div><div class="card-label">Notificações</div><div style="font-size:12px;color:var(--text-muted)">Alertas e lembretes</div></div>
+            <div class="card card-hover" onclick="App.openSettings('aparencia')"><div class="card-icon blue"><i class="fas fa-palette"></i></div><div class="card-label">Aparência</div><div style="font-size:12px;color:var(--text-muted)">Tema, cores, layout</div></div>
+            <div class="card card-hover" onclick="App.openSettings('seguranca')"><div class="card-icon orange"><i class="fas fa-shield-alt"></i></div><div class="card-label">Segurança</div><div style="font-size:12px;color:var(--text-muted)">Senha, permissões</div></div>
+            <div class="card card-hover" onclick="App.openSettings('spotify')"><div class="card-icon green"><i class="fab fa-spotify"></i></div><div class="card-label">Spotify</div><div style="font-size:12px;color:var(--text-muted)">Integração com Spotify API</div></div>
+          </div>
+          <div style="margin-top:24px;padding:16px;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);max-width:600px;margin-left:auto;margin-right:auto;text-align:left">
+            <div style="display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+              <i class="fas fa-database" style="color:var(--primary);width:20px"></i>
+              <div><div style="font-size:13px;color:var(--text)">Sistema</div><div style="font-size:11px;color:var(--text-muted)">Promake v1.0 - Backend SQLite</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding-top:12px">
+              <i class="fas fa-shield-alt" style="color:var(--success);width:20px"></i>
+              <div><div style="font-size:13px;color:var(--text)">Autenticação</div><div style="font-size:11px;color:var(--text-muted)">Sessão ativa como <span id="settingsUser">Admin</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-design">
+        <div id="designListView">
+          <div class="toolbar" style="margin-bottom:0;justify-content:flex-end;min-height:0;gap:0;padding:0 0 4px 0">
+            <div class="toolbar-right">
+              <button class="btn btn-primary btn-sm" onclick="App.openDesignModal()"><i class="fas fa-plus"></i> Novo Projeto</button>
+            </div>
+          </div>
+          <div class="cards-grid" id="designProjectsGrid" style="margin-bottom:0"></div>
+        </div>
+        <div id="designProjectView" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <button class="btn btn-outline btn-sm" onclick="App.backToDesignList()"><i class="fas fa-arrow-left"></i> Voltar</button>
+              <strong style="margin-left:12px" id="designProjectTitle"></strong>
+            </div>
+            <div class="toolbar-right" id="designProjectToolbar">
+              <button class="btn btn-outline btn-sm" onclick="App.editDesign(App._currentDesignId)"><i class="fas fa-edit"></i> Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="App.deleteDesign(App._currentDesignId)"><i class="fas fa-trash"></i> Excluir</button>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab active" data-tab="design-board">Board</div>
+            <div class="tab" data-tab="design-timeline">Linha do Tempo</div>
+            <div class="tab" data-tab="design-notes">Notas</div>
+          </div>
+          <div id="design-board">
+            <div class="toolbar" style="margin-bottom:12px">
+              <div class="toolbar-right" style="margin-left:auto">
+                <button class="btn btn-sm btn-outline" onclick="App.openCardModal(null)"><i class="fas fa-plus"></i> Adicionar Card</button>
+              </div>
+            </div>
+            <div class="kanban-board kanban-board-5" id="designBoard"></div>
+          </div>
+          <div id="design-timeline" style="display:none">
+            <div class="toolbar" style="margin-bottom:12px">
+              <div class="toolbar-left">
+                <div class="filter-group">
+                  <button class="btn btn-sm btn-outline" onclick="App.addTimelineStage()"><i class="fas fa-plus"></i> Nova Etapa</button>
+                  <span style="margin-left:8px;font-size:12px;color:var(--text-muted)">
+                    <i class="fas fa-search-plus"></i> Zoom: <span id="timelineZoomPct">100</span>%
+                  </span>
+                </div>
+              </div>
+              <div class="toolbar-right">
+                <input type="range" id="timelineZoom" min="25" max="200" value="100" step="5" style="width:120px;accent-color:var(--primary)" oninput="App.setTimelineZoom(this.value)">
+                <button class="btn btn-xs btn-outline" onclick="App.setTimelineZoom(100)"><i class="fas fa-expand"></i> 100%</button>
+              </div>
+            </div>
+            <div id="timelineCanvasWrapper" style="position:relative;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);height:calc(100vh - 310px);min-height:400px;cursor:grab">
+              <div id="timelineCanvas" style="transform-origin:0 0;transition:transform .1s ease;position:absolute;top:0;left:0;width:10000px;height:10000px">
+                <div id="timelineStages" style="position:relative;width:100%;min-height:600px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-notes">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <h3 style="margin:0"><i class="fas fa-sticky-note"></i> Notas</h3>
+          </div>
+          <div class="toolbar-right">
+            <span style="font-size:12px;color:var(--text-muted);margin-right:12px" id="noteStatus"></span>
+            <button class="btn btn-sm btn-outline" onclick="App.newNote()"><i class="fas fa-plus"></i> Nova Nota</button>
+            <button class="btn btn-sm btn-primary" onclick="App.saveNote()"><i class="fas fa-save"></i> Salvar</button>
+            <button class="btn btn-sm btn-outline" onclick="App.exportNotePdf()"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;height:calc(100vh - 200px);margin-top:12px">
+          <div id="notesList" style="width:240px;flex-shrink:0;overflow-y:auto;padding:4px"></div>
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+            <div class="toolbar" style="padding:6px 10px;gap:4px;flex-wrap:wrap;background:#f5deb3;border-radius:8px 8px 0 0">
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('bold')" style="background:#fff;border-color:#ccc"><b>B</b></button>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('italic')" style="background:#fff;border-color:#ccc"><i>I</i></button>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('underline')" style="background:#fff;border-color:#ccc"><u>U</u></button>
+              <span style="width:1px;height:20px;background:#c0a060;margin:0 4px"></span>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('formatBlock',false,'h2')" style="background:#fff;border-color:#ccc">H1</button>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('formatBlock',false,'h3')" style="background:#fff;border-color:#ccc">H2</button>
+              <span style="width:1px;height:20px;background:#c0a060;margin:0 4px"></span>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('insertUnorderedList')" style="background:#fff;border-color:#ccc"><i class="fas fa-list-ul"></i></button>
+              <button class="btn btn-xs btn-outline" onclick="document.execCommand('insertOrderedList')" style="background:#fff;border-color:#ccc"><i class="fas fa-list-ol"></i></button>
+            </div>
+            <div id="noteEditor" contenteditable="true" style="flex:1;padding:24px 28px;outline:none;overflow-y:auto;font-size:15px;line-height:1.8;font-family:'Segoe Print','Comic Sans MS',cursive;color:#3a3a1a;background:#FFF8DC;box-shadow:0 4px 12px rgba(0,0,0,0.1),inset 0 0 0 1px rgba(0,0,0,0.05);border-radius:0 0 8px 8px;min-height:300px" oninput="App._noteDirty=true;document.getElementById('noteStatus').textContent='Nao salvo'">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-spotify">
+        <div class="toolbar">
+          <div class="toolbar-left"><h3 style="margin:0"><i class="fab fa-spotify"></i> Spotify</h3></div>
+          <div class="toolbar-right" id="spotifyToolbar">
+            <button class="btn btn-success btn-sm" id="spotifyLoginBtn" onclick="App.spotifyLogin()"><i class="fab fa-spotify"></i> Entrar com Spotify</button>
+          </div>
+        </div>
+        <div id="spotifyNotConfigured" style="display:none;text-align:center;padding:40px;color:var(--text-muted)">
+          <i class="fab fa-spotify" style="font-size:64px;margin-bottom:16px;color:#1DB954"></i>
+          <h3>Spotify nao configurado</h3>
+          <p style="margin-bottom:16px">Va em <strong>Configuracoes &gt; Spotify</strong> e adicione seu Client ID e Client Secret.</p>
+          <button class="btn btn-primary" onclick="App.loadPage('settings')"><i class="fas fa-cog"></i> Abrir Configuracoes</button>
+        </div>
+        <div id="spotifyContent" style="display:none">
+          <div id="spotifyLoggedIn" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-card);border-radius:8px;margin-bottom:16px">
+              <div id="spotifyUserAvatar" style="width:40px;height:40px;border-radius:50%;background:#1DB954;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px"><i class="fab fa-spotify"></i></div>
+              <div><strong id="spotifyUserName">---</strong><div style="font-size:12px;color:var(--text-muted)" id="spotifyUserEmail">---</div></div>
+              <button class="btn btn-outline btn-sm" onclick="App.spotifyLogout()" style="margin-left:auto">Sair</button>
+            </div>
+            <div id="spotifyPlaylists">
+              <h4 style="margin-bottom:8px">Suas Playlists</h4>
+              <div class="cards-grid" id="spotifyPlaylistGrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+            </div>
+          </div>
+          <div id="spotifyNotLoggedIn" style="display:none;text-align:center;padding:40px">
+            <i class="fab fa-spotify" style="font-size:64px;margin-bottom:16px;color:#1DB954"></i>
+            <h3>Conecte seu Spotify</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px">Clique no botao acima para autorizar o acesso.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="page" id="page-festefe">
+        <div class="tabs">
+          <div class="tab active" data-tab="festefe-list">Chamados</div>
+          <div class="tab" data-tab="festefe-detail" id="festefeDetailTab" style="display:none">Detalhe do Chamado</div>
+        </div>
+        <div id="festefe-list">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="filter-group">
+                <select id="festefeStatusFilter"><option value="todos">Todos Status</option><option value="aberto">Aberto</option><option value="em_andamento">Em Andamento</option><option value="resolvido">Resolvido</option><option value="fechado">Fechado</option></select>
+                <div class="search-box"><i class="fas fa-search"></i><input type="text" id="festefeSearch" placeholder="Buscar chamados..."></div>
+              </div>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn btn-primary btn-sm" onclick="App.openFestefeModal()"><i class="fas fa-plus"></i> Novo Chamado</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-container"><table><thead><tr><th>#</th><th>Titulo</th><th>Cliente</th><th>Prioridade</th><th>Categoria</th><th>Status</th><th>Responsavel</th><th>Data</th><th>Acoes</th></tr></thead><tbody id="festefeTable"></tbody></table></div>
+          </div>
+        </div>
+        <div id="festefe-detail" style="display:none">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <button class="btn btn-outline btn-sm" onclick="App.backToFestefeList()"><i class="fas fa-arrow-left"></i> Voltar</button>
+              <strong style="margin-left:12px" id="festefeDetailTitle"></strong>
+            </div>
+            <div class="toolbar-right">
+              <select id="festefeStatusChange" onchange="App.changeFestefeStatus()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+                <option value="aberto">Aberto</option>
+                <option value="em_andamento">Em Andamento</option>
+                <option value="resolvido">Resolvido</option>
+                <option value="fechado">Fechado</option>
+              </select>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;padding:8px">
+              <div><div style="font-size:11px;color:var(--text-muted)">Cliente</div><div id="festefeDetailClient" style="font-weight:600">-</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted)">Prioridade</div><div id="festefeDetailPriority" style="font-weight:600">-</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted)">Categoria</div><div id="festefeDetailCategory" style="font-weight:600">-</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted)">Responsavel</div><div id="festefeDetailAssigned" style="font-weight:600">-</div></div>
+              <div><div style="font-size:11px;color:var(--text-muted)">Criado em</div><div id="festefeDetailDate" style="font-weight:600">-</div></div>
+            </div>
+            <div style="padding:8px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Descricao</div>
+              <div id="festefeDetailDesc" style="font-size:14px;white-space:pre-wrap"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h4 style="margin-bottom:12px"><i class="fas fa-comments"></i> Mensagens</h4>
+            <div id="festefeMessages" style="margin-bottom:16px;max-height:400px;overflow-y:auto"></div>
+            <div style="display:flex;gap:8px">
+              <textarea id="festefeNewMessage" rows="2" style="flex:1;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical" placeholder="Digite sua mensagem..."></textarea>
+              <button class="btn btn-primary" onclick="App.sendFestefeMessage()" style="align-self:flex-end"><i class="fas fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+
+<div class="modal-overlay" id="leadModal"><div class="modal">
+  <h3><i class="fas fa-funnel-dollar"></i> <span id="leadModalTitle">Novo Lead</span></h3>
+  <input type="hidden" id="leadId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome</label><input type="text" id="leadName" placeholder="Nome completo"></div>
+    <div class="form-group"><label>E-mail</label><input type="email" id="leadEmail" placeholder="email@exemplo.com"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="leadPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="leadCompany" placeholder="Nome da empresa"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Origem</label><select id="leadSource"><option value="website">Site</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="google">Google</option><option value="indicacao">Indicacao</option><option value="whatsapp">WhatsApp</option><option value="outros">Outros</option></select></div>
+    <div class="form-group"><label>Status</label><select id="leadStatus"><option value="novo">Novo</option><option value="contato">Contato</option><option value="qualificado">Qualificado</option><option value="proposta">Proposta</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor Potencial (R$)</label><input type="number" id="leadValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Responsavel</label><select id="leadAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="form-group"><label>Observações</label><textarea id="leadNotes" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('leadModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveLead()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="clientModal"><div class="modal">
+  <h3><i class="fas fa-user"></i> <span id="clientModalTitle">Novo Cliente</span></h3>
+  <input type="hidden" id="clientId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome</label><input type="text" id="clientName" placeholder="Nome completo"></div>
+    <div class="form-group"><label>E-mail</label><input type="email" id="clientEmail" placeholder="email@exemplo.com"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="clientPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="clientCompany" placeholder="Nome da empresa"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="clientStatus"><option value="active">Ativo</option><option value="inactive">Inativo</option></select></div>
+    <div class="form-group"><label>Tags</label><input type="text" id="clientTags" placeholder="ex: premium, vip, recorrente"></div>
+  </div>
+  <div class="form-group"><label>Observações</label><textarea id="clientNotes" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('clientModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveClient()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="projectModal"><div class="modal">
+  <h3><i class="fas fa-tasks"></i> <span id="projectModalTitle">Novo Projeto</span></h3>
+  <input type="hidden" id="projectId">
+  <div class="form-group"><label>Nome do Projeto</label><input type="text" id="projectName" placeholder="Nome do projeto"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="projectClient"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Tipo</label><select id="projectType"><option value="Social Media">Social Media</option><option value="Trafego Pago">Trafego Pago</option><option value="Design Grafico">Design Grafico</option><option value="Desenvolvimento Web">Desenvolvimento Web</option><option value="Marketing de Conteudo">Marketing de Conteudo</option><option value="Consultoria">Consultoria</option><option value="E-mail Marketing">E-mail Marketing</option><option value="SEO">SEO</option><option value="Video/Edicao">Video/Edicao</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="projectStatus"><option value="pending">Pendente</option><option value="active" selected>Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select></div>
+    <div class="form-group"><label>Prazo</label><input type="date" id="projectDeadline"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor (R$)</label><input type="number" id="projectValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>% Comissao</label><input type="number" id="projectCommission" placeholder="10" min="0" max="100" value="0"></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="projectDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('projectModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveProject()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="systemModal"><div class="modal">
+  <h3><i class="fas fa-globe"></i> <span id="systemModalTitle">Novo Sistema</span></h3>
+  <input type="hidden" id="systemId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome do Sistema</label><input type="text" id="systemName" placeholder="Ex: Portal Tech Solutions"></div>
+    <div class="form-group"><label>Cliente</label><select id="systemClient"><option value="">Selecione</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Slug (URL)</label><input type="text" id="systemSlug" placeholder="tech-solutions"></div>
+    <div class="form-group"><label>Senha do Portal</label><input type="text" id="systemPassword" placeholder="1234" value="1234"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Senha Admin</label><input type="text" id="systemAdminPassword" placeholder="Senha do painel admin" value=""></div>
+    <div class="form-group"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cor Primaria</label><input type="color" id="systemColor" value="#6C5CE7" style="width:100%;height:40px;padding:4px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer"></div>
+    <div class="form-group"><label>Logo URL</label><input type="text" id="systemLogo" placeholder="https://..."></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('systemModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSystem()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="soModal"><div class="modal">
+  <h3><i class="fas fa-clipboard-list"></i> <span id="soModalTitle">Nova Ordem de serviço</span></h3>
+  <input type="hidden" id="soId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="soTitle" placeholder="Titulo da OS"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Projeto</label><select id="soProject"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Prioridade</label><select id="soPriority"><option value="baixa">Baixa</option><option value="media" selected>Media</option><option value="alta">Alta</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="soStatus"><option value="pending">Pendente</option><option value="active" selected>Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select></div>
+    <div class="form-group"><label>Responsavel</label><select id="soAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Prazo</label><input type="date" id="soDeadline"></div>
+    <div class="form-group"><label>Horas Estimadas</label><input type="number" id="soHours" placeholder="0" min="0" step="0.5"></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="soDesc" rows="2"></textarea></div>
+  <div id="soTasks"><div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-tasks"></i> Subtarefas</div><div id="soTasksList"></div><button class="btn btn-xs btn-outline" onclick="App.addTaskField()"><i class="fas fa-plus"></i> Adicionar tarefa</button></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('soModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSO()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="contractModal"><div class="modal">
+  <h3><i class="fas fa-file-signature"></i> <span id="contractModalTitle">Novo Contrato</span></h3>
+  <input type="hidden" id="contractId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="contractTitle" placeholder="Titulo do contrato"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="contractClient"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Valor Mensal (R$)</label><input type="number" id="contractValue" placeholder="0,00" min="0" step="0.01"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Data Inicio</label><input type="date" id="contractStart"></div>
+    <div class="form-group"><label>Data Fim</label><input type="date" id="contractEnd"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo Renovacao</label><select id="contractRenewal"><option value="monthly">Mensal</option><option value="quarterly">Trimestral</option><option value="semiannual">Semestral</option><option value="annual">Anual</option><option value="none">Sem renovacao</option></select></div>
+    <div class="form-group"><label>Status</label><select id="contractStatus"><option value="active">Ativo</option><option value="expired">Expirado</option><option value="cancelled">Cancelado</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="contractDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('contractModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveContract()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="transactionModal"><div class="modal">
+  <h3><i class="fas fa-dollar-sign"></i> <span id="transModalTitle">Nova Transacao</span></h3>
+  <input type="hidden" id="transactionId">
+  <div class="form-group"><label>Descricao</label><input type="text" id="transDesc" placeholder="Descricao"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo</label><select id="transType"><option value="income">Receita</option><option value="expense">Despesa</option></select></div>
+    <div class="form-group"><label>Categoria</label><select id="transCategory"><option value="Mensalidade">Mensalidade</option><option value="Projeto">Projeto</option><option value="Anuncios">Anuncios</option><option value="Ferramentas">Ferramentas</option><option value="Freelancer">Freelancer</option><option value="Hospedagem">Hospedagem</option><option value="Salarios">Salarios</option><option value="Marketing">Marketing</option><option value="Outros">Outros</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor (R$)</label><input type="number" id="transValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Data</label><input type="date" id="transDate"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Metodo Pagamento</label><select id="transMethod"><option value="">Selecione</option><option value="pix">Pix</option><option value="boleto">Boleto</option><option value="credito">Cartao Credito</option><option value="debito">Cartao Debito</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferencia</option></select></div>
+    <div class="form-group"><label>Status</label><select id="transStatus"><option value="completed">Pago</option><option value="pending">Pendente</option><option value="cancelled">Cancelado</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="transClient"><option value="">Nenhum</option></select></div>
+    <div class="form-group"><label>Projeto</label><select id="transProject"><option value="">Nenhum</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('transactionModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTransaction()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="eventModal"><div class="modal">
+  <h3><i class="fas fa-calendar-plus"></i> <span id="eventModalTitle">Novo Evento</span></h3>
+  <input type="hidden" id="eventId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="eventTitle" placeholder="Titulo do evento"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Data</label><input type="date" id="eventDate"></div>
+    <div class="form-group"><label>Horario</label><input type="time" id="eventTime"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo</label><select id="eventType"><option value="evento">Evento</option><option value="reuniao">Reuniao</option><option value="prazo">Prazo</option><option value="aniversario">Aniversario</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="eventDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('eventModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveEvent()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="userModal"><div class="modal">
+  <h3><i class="fas fa-user-plus"></i> <span id="userModalTitle">Novo Membro</span></h3>
+  <input type="hidden" id="userId">
+  <div class="form-group"><label>Nome</label><input type="text" id="userNameInput" placeholder="Nome completo"></div>
+  <div class="form-group"><label>E-mail</label><input type="email" id="userEmailInput" placeholder="email@promake.com"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="userPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Cargo</label><select id="userRole"><option value="admin">Administrador</option><option value="manager">Gerente</option><option value="broker">Corretor</option><option value="designer">Designer</option><option value="developer">Desenvolvedor</option><option value="marketing">Marketing</option><option value="intern">Estagiario</option><option value="art_director">Diretor de Arte</option><option value="digital_strategist">Estrategista Digital</option><option value="freelancer">Freelancer</option><option value="filmmaker">Filmmaker</option><option value="fotografo">Fotógrafo</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Senha</label><input type="password" id="userPassword" placeholder="Deixe em branco para 123456"></div>
+    <div class="form-group"><label>Status</label><select id="userActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('userModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveUser()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="waTemplateModal"><div class="modal">
+  <h3><i class="fas fa-file-alt"></i> <span id="waTemplateModalTitle">Novo Template</span></h3>
+  <input type="hidden" id="waTemplateId">
+  <div class="form-group"><label>Nome do Template</label><input type="text" id="waTemplateName" placeholder="Ex: Acompanhamento lead" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="form-group"><label>Conteudo da Mensagem</label><textarea id="waTemplateContent" rows="4" placeholder="Ola, tudo bem? Gostariamos de saber seu feedback..." style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:vertical"></textarea></div>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Use <code>{{nome}}</code> para personalizar com o nome do lead/cliente.</p>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('waTemplateModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveWATemplate()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="planModal"><div class="modal" style="width:550px">
+  <h3><i class="fas fa-box"></i> <span id="planModalTitle">Novo Plano</span></h3>
+  <input type="hidden" id="planId">
+  <div class="form-group"><label>Nome do Plano</label><input type="text" id="planName" placeholder="Ex: Basico"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Preco (R$)</label><input type="number" id="planPrice" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Ciclo de Cobranca</label><select id="planBilling"><option value="monthly">Mensal</option><option value="quarterly">Trimestral</option><option value="semiannual">Semestral</option><option value="annual">Anual</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="planActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="planDesc" rows="2" placeholder="Descricao do plano"></textarea></div>
+  <div class="form-group"><label>Funcionalidades (uma por linha)</label><textarea id="planFeatures" rows="4" placeholder="8 posts por mes&#10;Relatorio mensal&#10;Suporte via WhatsApp"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('planModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.savePlan()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="clientPlanModal"><div class="modal" style="width:450px">
+  <h3><i class="fas fa-box"></i> Vincular Plano ao Cliente</h3>
+  <input type="hidden" id="clientPlanClientId">
+  <div class="form-group"><label>Plano</label><select id="clientPlanSelect" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="">Selecione</option></select></div>
+  <div class="form-group"><label>Data de Inicio</label><input type="date" id="clientPlanStartDate" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('clientPlanModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveClientPlan()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="settingsModal"><div class="modal" id="settingsModalContent"></div></div>
+<div class="notif-overlay" id="notifOverlay" onclick="App.closeNotifications()"></div>
+<div class="modal" id="notifPanel" style="display:none;position:fixed;top:70px;right:20px;width:380px;max-width:95%;z-index:999;padding:0;max-height:500px;overflow-y:auto">
+  <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <h4 style="margin:0;font-size:16px">Notificações</h4>
+    <button class="btn btn-xs btn-outline" onclick="App.markAllRead()">Marcar lidas</button>
+  </div>
+  <div id="notifList" style="padding:8px"></div>
+</div>
+
+<div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--bg-card);border-top:1px solid var(--border);padding:16px 24px;box-shadow:0 -4px 20px rgba(0,0,0,0.3);animation:fadeIn .3s">
+  <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px;font-size:13px;color:var(--text)">
+      <i class="fas fa-cookie-bite" style="color:var(--primary);margin-right:8px"></i>
+      Este sistema utiliza cookies apenas para melhorar sua experiência. Nenhum dado pessoal é coletado sem seu consentimento.
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-xs btn-outline" onclick="App.showPrivacyPolicy()"><i class="fas fa-shield-alt"></i> Política</button>
+      <button class="btn btn-xs btn-outline" onclick="App.cookieConsent(false)">Recusar</button>
+      <button class="btn btn-primary btn-xs" onclick="App.cookieConsent(true)"><i class="fas fa-check"></i> Aceitar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="taskModal"><div class="modal">
+  <h3><i class="fas fa-tasks"></i> <span id="taskModalTitle">Nova Tarefa</span></h3>
+  <input type="hidden" id="taskId">
+  <input type="hidden" id="taskSOId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="taskTitle" placeholder="Nome da tarefa" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="taskStatus" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="pending">Pendente</option><option value="active">Em Andamento</option><option value="completed">Concluida</option></select></div>
+    <div class="form-group"><label>Prazo</label><input type="date" id="taskDeadline" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  </div>
+  <div class="form-group"><label>Responsavel</label><select id="taskAssigned" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="">Nao definido</option></select></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('taskModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTask()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="confirmModal"><div class="modal" style="width:420px;text-align:center">
+  <div style="margin-bottom:16px"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--warning);opacity:0.8"></i></div>
+  <h3 style="margin-bottom:24px;justify-content:center" id="confirmTitle">Tem certeza?</h3>
+  <div class="modal-actions" style="justify-content:center">
+    <button class="btn btn-outline btn-sm" id="confirmCancelBtn" onclick="App.closeConfirm()">Cancelar</button>
+    <button class="btn btn-danger btn-sm" id="confirmOkBtn" onclick="App.confirmOk()"><i class="fas fa-trash"></i> Confirmar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="filesModal"><div class="modal">
+  <h3><i class="fas fa-folder-open"></i> <span id="filesModalTitle">Arquivos</span></h3>
+  <div id="filesModalBody"></div>
+  <div class="modal-actions">
+    <button class="btn btn-primary btn-sm" onclick="App.closeModal('filesModal')">Fechar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="permModal"><div class="modal" style="max-width:600px">
+  <div class="modal-header" id="permModalTitle"><i class="fas fa-shield-alt"></i> Gerenciar Permissões</div>
+  <div class="modal-body">
+    <input type="hidden" id="permUserId">
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:8px">Membro: <strong id="permUserName"></strong></label>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-chart-pie" style="width:16px"></i> Dashboard</label>
+        <select id="perm-dashboard" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-funnel-dollar" style="width:16px"></i> CRM / Leads</label>
+        <select id="perm-leads" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-users" style="width:16px"></i> Clientes</label>
+        <select id="perm-clients" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-tasks" style="width:16px"></i> Projetos</label>
+        <select id="perm-projects" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-columns" style="width:16px"></i> Kanban</label>
+        <select id="perm-kanban" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-clipboard-list" style="width:16px"></i> Ordem de Serviço</label>
+        <select id="perm-services" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-file-signature" style="width:16px"></i> Contratos</label>
+        <select id="perm-contracts" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-dollar-sign" style="width:16px"></i> Financeiro</label>
+        <select id="perm-finance" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-ad" style="width:16px"></i> Marketing</label>
+        <select id="perm-marketing" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-calendar" style="width:16px"></i> Calendário</label>
+        <select id="perm-calendar" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-chart-bar" style="width:16px"></i> Relatórios</label>
+        <select id="perm-reports" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-user-friends" style="width:16px"></i> Equipe</label>
+        <select id="perm-team" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-building" style="width:16px"></i> Empreendimentos</label>
+        <select id="perm-developments" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group"></div>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('permModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.savePermissions()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="devModal"><div class="modal" style="max-width:600px">
+  <h3><i class="fas fa-building"></i> <span id="devModalTitle">Novo Empreendimento</span></h3>
+  <input type="hidden" id="devId">
+  <div class="form-group"><label>Nome do Empreendimento</label><input type="text" id="devName" placeholder="Ex: Residencial Solar"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Construtora</label><input type="text" id="devBuilder" placeholder="MARSAN"></div>
+    <div class="form-group"><label>Status</label><select id="devStatus"><option value="lançamento">Lançamento</option><option value="obras">Em Obras</option><option value="pronto">Pronto</option></select></div>
+  </div>
+  <div class="form-group"><label>Endereço</label><input type="text" id="devAddress" placeholder="Av. Principal, 1000"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Total de Unidades</label><input type="number" id="devTotalUnits" placeholder="0"></div>
+    <div class="form-group"><label>Previsão de Entrega</label><input type="date" id="devDeliveryDate"></div>
+  </div>
+  <div class="form-group"><label>Descrição</label><textarea id="devDescription" rows="3" placeholder="Descrição do empreendimento..."></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('devModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveDevelopment()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="unitModal"><div class="modal" style="max-width:600px">
+  <h3><i class="fas fa-door-open"></i> <span id="unitModalTitle">Nova Unidade</span></h3>
+  <input type="hidden" id="unitId">
+  <div class="form-row">
+    <div class="form-group"><label>Unidade</label><input type="text" id="unitNumber" placeholder="Ex: 101, APT 42"></div>
+    <div class="form-group"><label>Torre</label><input type="text" id="unitTower" placeholder="Ex: A, B, 1"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Bloco</label><input type="text" id="unitBlock" placeholder="Ex: 1, 2"></div>
+    <div class="form-group"><label>Andar</label><input type="text" id="unitFloor" placeholder="Ex: 1, 2, Térreo"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Área (m²)</label><input type="number" id="unitArea" step="0.01" placeholder="0"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="unitPrice" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Quartos</label><input type="number" id="unitBedrooms" placeholder="0"></div>
+    <div class="form-group"><label>Suítes</label><input type="number" id="unitSuites" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Banheiros</label><input type="number" id="unitBathrooms" placeholder="0"></div>
+    <div class="form-group"><label>Vagas</label><input type="number" id="unitParking" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="unitStatus"><option value="disponivel">Disponível</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+    <div class="form-group"><label>Observações</label><input type="text" id="unitNotes" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('unitModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveUnit()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="brokerDevModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-user-plus"></i> Liberar Corretor</h3>
+  <input type="hidden" id="brokerDevId">
+  <div class="form-group"><label>Corretor</label><select id="brokerDevUser" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></select></div>
+  <div class="form-group"><label>Comissão (%)</label><input type="number" id="brokerDevPct" step="0.1" value="3.0" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('brokerDevModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveBrokerDev()"><i class="fas fa-check"></i> Liberar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="privacyModal"><div class="modal" style="max-width:700px">
+  <h3><i class="fas fa-shield-alt"></i> Política de Privacidade</h3>
+  <div style="font-size:13px;line-height:1.7;color:var(--text);max-height:400px;overflow-y:auto;padding-right:8px">
+    <p><strong>Promake Ecosystem</strong> valoriza sua privacidade. Esta política descreve como tratamos seus dados.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">1. Dados Coletados</h4>
+    <p>Coletamos apenas dados fornecidos voluntariamente: nome, email, telefone, empresa e informações de projetos inseridos no sistema.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">2. Cookies</h4>
+    <p>Utilizamos cookies essenciais para manter sua sessão ativa (token de autenticação) e preferências de interface (tema, idioma). Não usamos cookies de rastreamento ou publicidade.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">3. Armazenamento</h4>
+    <p>Seus dados são armazenados localmente em banco SQLite no próprio servidor. Não compartilhamos dados com terceiros.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">4. Segurança</h4>
+    <p>As sessões são protegidas por autenticação via token. Recomendamos o uso de senhas fortes.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">5. Seus Direitos</h4>
+    <p>Você pode solicitar a exclusão dos seus dados a qualquer momento entrando em contato com o administrador do sistema.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">6. Contato</h4>
+    <p>Dúvidas sobre esta política: admin@promake.com</p>
+    <p style="margin-top:16px;font-size:11px;color:var(--text-muted)">Última atualização: Maio 2026</p>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-primary btn-sm" onclick="App.closeModal('privacyModal')">Fechar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="slideModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-images"></i> <span id="slideModalTitle">Novo Slide</span></h3>
+  <input type="hidden" id="slideId">
+  <div class="form-group">
+    <label>Imagem</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="slideImage" placeholder="nome-do-arquivo.jpg" style="flex:1">
+      <button class="btn btn-outline btn-sm" onclick="App.uploadSlideImage()" style="white-space:nowrap"><i class="fas fa-upload"></i> Enviar</button>
+    </div>
+    <div id="slidePreview" style="margin-top:8px;border:1px dashed var(--border);border-radius:8px;min-height:60px;display:flex;align-items:center;justify-content:center"></div>
+  </div>
+  <div class="form-group"><label>Título</label><input type="text" id="slideTitle" placeholder="Título principal do slide"></div>
+  <div class="form-group"><label>Subtítulo</label><textarea id="slideSubtitle" rows="2" placeholder="Descrição que aparece abaixo do título"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Badge (texto)</label><input type="text" id="slideBadge" placeholder="Ex: Novo!"></div>
+    <div class="form-group"><label>Ordem</label><input type="number" id="slideOrder" value="0" min="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Texto do Botão 1</label><input type="text" id="slideLinkText" value="Acessar Agora"></div>
+    <div class="form-group"><label>Link Botão 1 (opcional)</label><input type="text" id="slideLinkUrl" placeholder="https://..."></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Texto Botão 2 (opcional)</label><input type="text" id="slideBtn2Text" placeholder="Ex: Saiba Mais"></div>
+    <div class="form-group"><label>Link Botão 2</label><input type="text" id="slideBtn2Url" placeholder="https://..."></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="slideActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+    <div class="form-group"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('slideModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSlide()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="designModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-paint-brush"></i> <span id="designModalTitle">Novo Projeto Criativo</span></h3>
+  <input type="hidden" id="designId">
+  <div class="form-group"><label>Nome do Projeto</label><input type="text" id="designName" placeholder="Ex: Campanha Redes Sociais"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="designDesc" rows="2" placeholder="Descrição do projeto"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><input type="text" id="designClient" placeholder="Nome do cliente"></div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="designDeadline"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('designModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveDesign()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="cardModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-sticky-note"></i> <span id="cardModalTitle">Novo Card</span></h3>
+  <input type="hidden" id="cardId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="cardTitle" placeholder="Ex: Criar arte para feed"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="cardDesc" rows="2" placeholder="Detalhes da tarefa"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Fase</label><select id="cardStage"><option value="briefing">Briefing</option><option value="criacao">Criação</option><option value="revisao">Revisão</option><option value="aprovacao">Aprovação</option><option value="finalizado">Finalizado</option></select></div>
+    <div class="form-group"><label>Cor</label><select id="cardColor"><option value="">Nenhuma</option><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF1744">Vermelho</option><option value="#FF9800">Laranja</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Responsavel</label><input type="text" id="cardAssigned" placeholder="Nome do responsavel"></div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="cardDeadline"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('cardModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveCard()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="stageModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-layer-group"></i> <span id="stageModalTitle">Nova Etapa</span></h3>
+  <input type="hidden" id="stageId">
+  <div class="form-group"><label>Nome da Etapa</label><input type="text" id="stageTitle" placeholder="Ex: Identidade Visual"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="stageDesc" rows="2" placeholder="Descricao da etapa"></textarea></div>
+  <div class="form-group"><label>Cor</label><select id="stageColor"><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF9800">Laranja</option><option value="#FF1744">Vermelho</option></select></div>
+  <div class="form-group"><label>Imagens</label>
+    <div id="stageImages" class="image-grid"></div>
+    <input type="file" id="stageImageInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="App._handleImageUpload('stage',document.getElementById('stageId').value,this)">
+    <button class="btn btn-xs btn-outline" onclick="document.getElementById('stageImageInput').click()"><i class="fas fa-image"></i> Adicionar Imagem</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('stageModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveStage()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="timelineItemModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-file-alt"></i> <span id="timelineItemModalTitle">Novo Item</span></h3>
+  <input type="hidden" id="timelineItemId">
+  <input type="hidden" id="timelineItemStageId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="timelineItemTitle" placeholder="Ex: Logo"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="timelineItemDesc" rows="2" placeholder="Detalhes do item"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="timelineItemStatus" onchange="App._updateStatusIndicator()"><option value="pendente">Pendente</option><option value="em_andamento">Em Andamento</option><option value="concluido">Concluido</option></select></div>
+    <div class="form-group"><label>Cor</label><select id="timelineItemColor"><option value="">Nenhuma</option><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF1744">Vermelho</option></select></div>
+  </div>
+  <div id="statusIndicator" style="text-align:center;padding:8px 0;font-size:28px;min-height:48px"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Responsavel</label><input type="text" id="timelineItemAssigned" placeholder="Nome do responsavel"></div>
+    <div class="form-group"><label>Link/URL</label><input type="text" id="timelineItemUrl" placeholder="https://..."></div>
+  </div>
+  <div class="form-group"><label>Imagens</label>
+    <div id="timelineItemImages" class="image-grid"></div>
+    <input type="file" id="timelineItemImageInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="App._handleImageUpload('timeline_item',document.getElementById('timelineItemId').value,this)">
+    <button class="btn btn-xs btn-outline" onclick="document.getElementById('timelineItemImageInput').click()"><i class="fas fa-image"></i> Adicionar Imagem</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('timelineItemModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTimelineItem()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="festefeModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-ticket-alt"></i> <span id="festefeModalTitle">Novo Chamado</span></h3>
+  <input type="hidden" id="festefeId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="festefeTitle" placeholder="Ex: Solicitação de arte"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="festefeDesc" rows="3" placeholder="Descreva o chamado em detalhes..."></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Prioridade</label><select id="festefePriority"><option value="baixa">Baixa</option><option value="media" selected>Media</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+    <div class="form-group"><label>Categoria</label><select id="festefeCategory"><option value="">Selecione</option><option value="design">Design</option><option value="social_media">Social Media</option><option value="web">Web</option><option value="video">Video</option><option value="impresso">Impresso</option><option value="identidade_visual">Identidade Visual</option><option value="outro">Outro</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><input type="text" id="festefeClient" placeholder="Nome do cliente"></div>
+    <div class="form-group"><label>Responsavel</label><select id="festefeAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('festefeModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveFestefe()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div id="musicPlayer" class="music-player minimized">
+  <div class="music-header" onclick="App.toggleMusicPlayer()">
+    <i class="fas fa-music"></i>
+    <span class="music-header-title">Player</span>
+    <span id="musicNowPlaying" class="music-now-playing"></span>
+    <span class="music-header-toggle"><i class="fas fa-chevron-up"></i></span>
+    <span class="music-close" onclick="event.stopPropagation();App.closeMusicPlayer()"><i class="fas fa-times"></i></span>
+  </div>
+  <div class="music-body">
+    <div class="music-source-tabs">
+      <button class="music-source-tab active" data-source="local" onclick="App.switchMusicSource('local')"><i class="fas fa-folder"></i> Local</button>
+      <button class="music-source-tab" data-source="youtube" onclick="App.switchMusicSource('youtube')"><i class="fab fa-youtube"></i> YouTube</button>
+      <button class="music-source-tab" data-source="spotify" onclick="App.switchMusicSource('spotify')"><i class="fab fa-spotify"></i> Spotify</button>
+    </div>
+
+    <div class="music-source-panels">
+      <div class="music-source-panel active" id="musicSourceLocal">
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('localFileInput').click()" style="width:100%;margin-bottom:6px">
+          <i class="fas fa-folder-open"></i> Escolher arquivos
+        </button>
+        <input type="file" id="localFileInput" accept="audio/*" multiple hidden onchange="App.loadLocalFiles(this.files)">
+        <div class="music-playlist" id="localPlaylist"></div>
+      </div>
+
+      <div class="music-source-panel" id="musicSourceYoutube">
+        <div class="music-url-row">
+          <input type="text" id="ytSearchInput" placeholder="Buscar música ou colar URL do YouTube..." class="music-url-input" onkeydown="if(event.key==='Enter')App.searchYouTube()">
+          <button class="btn btn-sm btn-primary" onclick="App.searchYouTube()" title="Buscar"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="music-yt-results" id="musicYtResults"></div>
+        <div class="music-yt-active" id="musicYtActive" style="display:none">
+          <div class="music-yt-viewer" id="musicYtViewer" style="display:none">
+            <div class="yt-resize-handle" id="ytResizeHandle"></div>
+          </div>
+          <div class="music-yt-info-bar">
+            <span class="music-yt-title" id="musicYtTitle"></span>
+            <div class="music-yt-mode-toggle">
+              <button class="yt-mode-btn active" data-mode="audio" onclick="App.setYTMode('audio')" title="Somente áudio"><i class="fas fa-headphones"></i></button>
+              <button class="yt-mode-btn" data-mode="video" onclick="App.setYTMode('video')" title="Exibir vídeo"><i class="fas fa-tv"></i></button>
+              <button class="yt-mode-btn" id="ytExpandBtn" onclick="App.toggleYTMaximize()" title="Maximizar vídeo" style="display:none"><i class="fas fa-expand"></i></button>
+              <button class="yt-mode-btn" id="ytSaveCurrentBtn" onclick="App.saveCurrentYTToPlaylist()" title="Salvar vídeo na playlist" style="color:var(--primary)"><i class="fas fa-bookmark"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="music-yt-playlist-header">
+          <span><i class="fas fa-list"></i> Minha Playlist</span>
+          <span style="font-weight:400;font-size:11px" id="ytPlaylistCount">0</span>
+        </div>
+        <div class="music-yt-playlist" id="musicYtPlaylist"></div>
+      </div>
+
+      <div class="music-source-panel" id="musicSourceSpotify">
+        <div class="music-url-row" style="padding:4px 8px;gap:4px">
+          <input type="text" id="spotifyUrlInput" placeholder="URL do Spotify..." class="music-url-input" style="font-size:12px;padding:4px 8px" onkeydown="if(event.key==='Enter')App.loadSpotify()">
+          <button class="btn btn-sm btn-primary" onclick="App.loadSpotify()" title="Carregar" style="padding:4px 10px;font-size:12px"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <div id="spotifyPlayerDashboard" style="padding:8px">
+          <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">Carregando Spotify...</div>
+        </div>
+        <div class="music-spotify-embed" id="spotifyEmbedContainer" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="music-controls">
+      <div class="music-track-info" id="musicTrackInfo"><i class="fas fa-music"></i> Nenhuma faixa</div>
+      <div class="music-progress-row">
+        <span class="music-time" id="musicTimeCurrent">0:00</span>
+        <input type="range" id="musicProgress" min="0" max="100" value="0" oninput="App.seekMusic(this.value)">
+        <span class="music-time" id="musicTimeTotal">0:00</span>
+      </div>
+      <div class="music-buttons">
+        <button class="music-btn" onclick="App.prevTrack()" title="Anterior"><i class="fas fa-step-backward"></i></button>
+        <button class="music-btn music-play-btn" onclick="App.togglePlay()" title="Play/Pause"><i class="fas fa-play" id="musicPlayIcon"></i></button>
+        <button class="music-btn" onclick="App.nextTrack()" title="Próximo"><i class="fas fa-step-forward"></i></button>
+        <div class="music-volume-wrap">
+          <i class="fas fa-volume-up music-vol-icon"></i>
+          <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="0.7" oninput="App.setVolume(this.value)">
+        </div>
+        <span class="music-source-label" id="musicSourceLabel"></span>
+    </div>
+  </div>
+  <div class="music-resize-n" data-rsz="n"></div>
+  <div class="music-resize-s" data-rsz="s"></div>
+  <div class="music-resize-e" data-rsz="e"></div>
+  <div class="music-resize-w" data-rsz="w"></div>
+  <div class="music-resize-ne" data-rsz="ne"></div>
+  <div class="music-resize-nw" data-rsz="nw"></div>
+  <div class="music-resize-se" data-rsz="se"></div>
+  <div class="music-resize-sw" data-rsz="sw"></div>
+</div>
+</div>
+
+<audio id="musicAudioElement" hidden></audio>
+<div id="ytPlayerContainer" style="position:absolute;left:-9999px;top:0;width:358px;height:160px;pointer-events:none;opacity:0"></div>
+
+<script src="app.js?v=31"></script>
+<script>
+try{App.init()}catch(e){document.getElementById('loginError').textContent='Erro ao carregar: '+e.message;document.getElementById('loginError').classList.add('show');console.error(e)}
+</script>
+</body>
+</html>

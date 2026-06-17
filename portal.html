@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Cliente</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#6C5CE7;--bg:#F5F5FA;--bg-card:#FFFFFF;--text:#1A1A2E;--text-muted:#8888AA;--border:#E0E0EC;--success:#00C853;--warning:#FFD600;--danger:#FF1744;--radius:12px;--shadow:0 2px 12px rgba(0,0,0,0.06)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:var(--bg-card);border-radius:var(--radius);padding:40px;width:400px;max-width:100%;border:1px solid var(--border);box-shadow:var(--shadow);text-align:center}
+.login-box .icon{font-size:48px;margin-bottom:16px;color:var(--primary)}
+.login-box h2{font-size:22px;margin-bottom:8px}
+.login-box p{color:var(--text-muted);font-size:14px;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;background:var(--bg);color:var(--text)}
+.login-box input:focus{outline:none;border-color:var(--primary)}
+.login-box button{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff}
+.login-box button:hover{opacity:0.9}
+.login-box .error{color:var(--danger);font-size:13px;margin-top:8px;display:none}
+.dashboard{display:none}
+.header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-left h3{font-size:16px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-right button{background:none;border:1px solid var(--border);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text)}
+.header-right button:hover{background:var(--bg)}
+.content{padding:24px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+.card{background:var(--bg-card);border-radius:var(--radius);padding:20px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.card h4{font-size:14px;color:var(--text-muted);margin-bottom:8px}
+.card .value{font-size:28px;font-weight:700}
+.card .value.green{color:var(--success)}
+.card .value.red{color:var(--danger)}
+.card .value.purple{color:var(--primary)}
+.section{margin-bottom:28px}
+.section h3{font-size:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-muted)}
+.empty-state i{font-size:40px;margin-bottom:12px;opacity:0.4}
+.empty-state p{font-size:13px}
+.badge{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.badge.active{background:#E8F5E9;color:#2E7D32}
+.badge.pending{background:#FFF8E1;color:#F57F17}
+.badge.completed{background:#E8F5E9;color:#2E7D32}
+.badge.danger{background:#FFEBEE;color:#C62828}
+.loading{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.loading i{font-size:40px;margin-bottom:12px}
+.login-loading{display:none;color:var(--text-muted);font-size:13px;margin-top:12px}
+@media(max-width:768px){
+  .content{padding:16px}
+  .header{padding:12px 16px;flex-wrap:wrap;gap:8px}
+  .header-right{gap:8px}
+  .grid{grid-template-columns:1fr;gap:12px}
+  table{font-size:12px}
+  th,td{padding:8px 10px}
+  .card{padding:16px}
+  .card .value{font-size:22px}
+  .section{margin-bottom:20px}
+}
+@media(max-width:480px){
+  .content{padding:12px}
+  .header{padding:10px 12px}
+  .header-left h3{font-size:14px}
+  .card{padding:14px}
+  .card .value{font-size:20px}
+  table{font-size:11px}
+  th,td{padding:6px 8px}
+  .login-box{padding:24px 16px}
+  .login-box h2{font-size:18px}
+}
+</style>
+</head>
+<body>
+
+<div class="login-page" id="loginPage">
+  <div class="login-box">
+    <div class="icon"><i class="fas fa-globe"></i></div>
+    <h2 id="loginTitle">Portal do Cliente</h2>
+    <p id="loginSubtitle">Digite a senha para acessar seu portal</p>
+    <input type="password" id="portalPassword" placeholder="Senha do portal" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()"><i class="fas fa-arrow-right"></i> Acessar</button>
+    <div class="error" id="loginError">Senha incorreta</div>
+    <div class="login-loading" id="loginLoading"><i class="fas fa-spinner fa-spin"></i> Entrando...</div>
+  </div>
+</div>
+
+<div class="dashboard" id="dashboard">
+  <div class="header">
+    <div class="header-left">
+      <i class="fas fa-globe" style="color:var(--primary);font-size:20px"></i>
+      <h3 id="portalName">Portal</h3>
+    </div>
+    <div class="header-right">
+      <span style="font-size:13px;color:var(--text-muted)" id="clientName"></span>
+      <button onclick="logoutPortal()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="portalLoading" class="loading"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div>
+
+    <div id="portalDashboard" style="display:none">
+      <div class="grid" id="statsGrid"></div>
+
+      <div id="sectionProjects" class="section" style="display:none">
+        <h3><i class="fas fa-tasks" style="color:var(--primary)"></i> Projetos</h3>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Status</th><th>Prazo</th><th>Valor</th></tr></thead><tbody id="portalProjectsTable"></tbody></table></div></div>
+      </div>
+
+      <div id="sectionServiceOrders" class="section" style="display:none">
+        <h3><i class="fas fa-clipboard-list" style="color:var(--primary)"></i> Ordens de Serviço</h3>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Título</th><th>Status</th><th>Prioridade</th><th>Prazo</th></tr></thead><tbody id="portalOSTable"></tbody></table></div></div>
+      </div>
+
+      <div id="sectionFinance" class="section" style="display:none">
+        <h3><i class="fas fa-dollar-sign" style="color:var(--primary)"></i> Financeiro</h3>
+        <div class="grid" id="finSummary" style="margin-bottom:12px"></div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Status</th></tr></thead><tbody id="portalTransactionsTable"></tbody></table></div></div>
+      </div>
+
+      <div id="sectionCalendar" class="section" style="display:none">
+        <h3><i class="fas fa-calendar" style="color:var(--primary)"></i> Eventos</h3>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Título</th><th>Hora</th><th>Tipo</th></tr></thead><tbody id="portalEventsTable"></tbody></table></div></div>
+      </div>
+
+      <div id="sectionFiles" class="section" style="display:none">
+        <h3><i class="fas fa-folder-open" style="color:var(--primary)"></i> Arquivos</h3>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Arquivo</th><th>Tamanho</th><th>Data</th></tr></thead><tbody id="portalFilesTable"></tbody></table></div></div>
+      </div>
+
+      <div id="sectionDevelopments" class="section" style="display:none">
+        <h3><i class="fas fa-building" style="color:var(--primary)"></i> Empreendimentos</h3>
+        <div class="grid" id="devStatsGrid" style="margin-bottom:12px"></div>
+        <div class="card"><div class="table-container"><table><thead><tr><th>Empreendimento</th><th>Unidade</th><th>Torre</th><th>Área</th><th>Quartos</th><th>Preço</th><th>Status</th></tr></thead><tbody id="portalUnitsTable"></tbody></table></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = {
+  baseUrl: window.location.origin,
+  token: '',
+  async request(method, url, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (this.token) opts.headers['Authorization'] = 'Bearer ' + this.token;
+    if (body) opts.body = JSON.stringify(body);
+    try {
+      const res = await fetch(this.baseUrl + url, opts);
+      return await res.json();
+    } catch(e) { return null; }
+  },
+  get(url) { return this.request('GET', url); },
+  post(url, body) { return this.request('POST', url, body); }
+};
+
+const slug = window.location.pathname.replace('/portal/', '').split('/')[0] || '';
+let portalData = null;
+
+document.getElementById('loginTitle').textContent = 'Portal ' + slug.replace(/-/g, ' ');
+document.title = 'Portal - ' + slug.replace(/-/g, ' ');
+
+async function doLogin() {
+  const password = document.getElementById('portalPassword').value;
+  if (!password) return;
+  document.getElementById('loginLoading').style.display = 'block';
+  document.getElementById('loginError').style.display = 'none';
+  const r = await API.post('/api/portal/login', { slug, password });
+  document.getElementById('loginLoading').style.display = 'none';
+  if (!r || r.error) {
+    document.getElementById('loginError').textContent = r?.error || 'Erro ao conectar';
+    document.getElementById('loginError').style.display = 'block';
+    return;
+  }
+  API.token = r.token;
+  portalData = r.system;
+  if (portalData.primary_color) {
+    document.documentElement.style.setProperty('--primary', portalData.primary_color);
+  }
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('portalName').textContent = portalData.name;
+  document.getElementById('clientName').textContent = portalData.name;
+  document.title = portalData.name + ' - Portal';
+  loadPortalData();
+}
+
+async function loadPortalData() {
+  document.getElementById('portalLoading').style.display = 'block';
+  document.getElementById('portalDashboard').style.display = 'none';
+  const data = await API.get('/api/portal/data');
+  document.getElementById('portalLoading').style.display = 'none';
+  document.getElementById('portalDashboard').style.display = 'block';
+  if (!data) return;
+  const modules = data.modules || {};
+
+  if (modules.dashboard) {
+    renderStats(data);
+  }
+  if (modules.projects) {
+    document.getElementById('sectionProjects').style.display = 'block';
+    renderProjects(data.projects || []);
+  }
+  if (modules.service_orders) {
+    document.getElementById('sectionServiceOrders').style.display = 'block';
+    renderServiceOrders(data.service_orders || []);
+  }
+  if (modules.finance) {
+    document.getElementById('sectionFinance').style.display = 'block';
+    renderFinance(data.transactions || []);
+  }
+  if (modules.calendar) {
+    document.getElementById('sectionCalendar').style.display = 'block';
+    renderEvents(data.events || []);
+  }
+  if (modules.files) {
+    document.getElementById('sectionFiles').style.display = 'block';
+    renderFiles(data.files || []);
+  }
+  if (modules.developments) {
+    document.getElementById('sectionDevelopments').style.display = 'block';
+    renderDevelopments(data);
+  }
+}
+
+function renderStats(data) {
+  const s = data.projects_summary || {};
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="card"><h4>Total de Projetos</h4><div class="value purple">${s.total||0}</div></div>
+    <div class="card"><h4>Em Andamento</h4><div class="value green">${s.active||0}</div></div>
+    <div class="card"><h4>Concluídos</h4><div class="value">${s.completed||0}</div></div>
+  `;
+}
+
+function renderProjects(projects) {
+  const tbody = document.getElementById('portalProjectsTable');
+  if (!projects.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-tasks"></i><p>Nenhum projeto</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = projects.map(p => `
+    <tr>
+      <td><strong>${esc(p.name)}</strong></td>
+      <td>${esc(p.type||'')}</td>
+      <td><span class="badge ${p.status}">${statusLabel(p.status)}</span></td>
+      <td>${p.deadline||'-'}</td>
+      <td>R$ ${(p.value||0).toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderServiceOrders(orders) {
+  const tbody = document.getElementById('portalOSTable');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="fas fa-clipboard-list"></i><p>Nenhuma OS</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td><strong>${esc(o.title)}</strong></td>
+      <td><span class="badge ${o.status}">${osStatusLabel(o.status)}</span></td>
+      <td><span class="badge ${o.priority}">${esc(o.priority||'')}</span></td>
+      <td>${o.deadline||'-'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderFinance(transactions) {
+  const totalIncome = transactions.filter(t => t.type==='income').reduce((a,b) => a+(b.value||0), 0);
+  const totalExpense = transactions.filter(t => t.type==='expense').reduce((a,b) => a+(b.value||0), 0);
+  document.getElementById('finSummary').innerHTML = `
+    <div class="card"><h4>Receitas</h4><div class="value green">R$ ${totalIncome.toFixed(2)}</div></div>
+    <div class="card"><h4>Despesas</h4><div class="value red">R$ ${totalExpense.toFixed(2)}</div></div>
+    <div class="card"><h4>Saldo</h4><div class="value purple">R$ ${(totalIncome-totalExpense).toFixed(2)}</div></div>
+  `;
+  const tbody = document.getElementById('portalTransactionsTable');
+  if (!transactions.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-dollar-sign"></i><p>Nenhuma transacao</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = transactions.map(t => `
+    <tr>
+      <td>${esc(t.description)}</td>
+      <td>${t.type==='income'?'Receita':'Despesa'}</td>
+      <td style="color:${t.type==='income'?'var(--success)':'var(--danger)'}">R$ ${(t.value||0).toFixed(2)}</td>
+      <td>${t.date||'-'}</td>
+      <td><span class="badge ${t.status}">${transStatusLabel(t.status)}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderEvents(events) {
+  const tbody = document.getElementById('portalEventsTable');
+  if (!events.length) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><i class="fas fa-calendar"></i><p>Nenhum evento</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = events.map(e => `
+    <tr>
+      <td>${e.date||'-'}</td>
+      <td><strong>${esc(e.title)}</strong></td>
+      <td>${e.time||'-'}</td>
+      <td>${esc(e.type||'')}</td>
+    </tr>
+  `).join('');
+}
+
+function renderFiles(files) {
+  const tbody = document.getElementById('portalFilesTable');
+  if (!files.length) {
+    tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><i class="fas fa-folder-open"></i><p>Nenhum arquivo</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = files.map(f => `
+    <tr>
+      <td><a href="/api/download/${f.id}" style="color:var(--primary);text-decoration:none"><i class="fas fa-download"></i> ${esc(f.original_name||f.filename)}</a></td>
+      <td>${formatSize(f.size||0)}</td>
+      <td>${f.created_at||'-'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDevelopments(data) {
+  const units = data.units || [];
+  const summary = data.units_summary || {};
+  document.getElementById('devStatsGrid').innerHTML = `
+    <div class="card"><h4>Total de Unidades</h4><div class="value purple">${summary.total||0}</div></div>
+    <div class="card"><h4>Disponiveis</h4><div class="value green">${summary.disponivel||0}</div></div>
+    <div class="card"><h4>Reservados</h4><div class="value" style="color:#FFD600">${summary.reservado||0}</div></div>
+    <div class="card"><h4>Vendidos</h4><div class="value red">${summary.vendido||0}</div></div>
+  `;
+  const devs = data.developments || [];
+  const devMap = {};
+  devs.forEach(d => { devMap[d.id] = d; });
+  const tbody = document.getElementById('portalUnitsTable');
+  if (!units.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-building"></i><p>Nenhuma unidade cadastrada</p></div></td></tr>';
+    return;
+  }
+  const statusLabel = { disponivel:'Disponivel', reservado:'Reservado', vendido:'Vendido' };
+  const statusClass = { disponivel:'active', reservado:'pending', vendido:'completed' };
+  tbody.innerHTML = units.map(u => `
+    <tr>
+      <td><strong>${esc(devMap[u.development_id]?.name||'')}</strong></td>
+      <td>${esc(u.number)}</td>
+      <td>${esc(u.tower||'-')}</td>
+      <td>${u.area ? u.area+' m²' : '-'}</td>
+      <td>${u.bedrooms||0}</td>
+      <td>R$ ${(u.price||0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+      <td><span class="badge ${statusClass[u.status]||''}">${statusLabel[u.status]||u.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+function statusLabel(s) {
+  return { pending:'Pendente', active:'Em Andamento', completed:'Concluído', atrasado:'Atrasado' }[s] || s;
+}
+
+function osStatusLabel(s) {
+  return { pending:'Pendente', active:'Em Andamento', completed:'Concluída' }[s] || s;
+}
+
+function transStatusLabel(s) {
+  return { pending:'Pendente', completed:'Concluída', cancelled:'Cancelada' }[s] || s;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function esc(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function logoutPortal() {
+  API.token = '';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('portalPassword').value = '';
+}
+</script>
+</body>
+</html>

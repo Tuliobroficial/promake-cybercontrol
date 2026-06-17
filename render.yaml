@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: promake-cybercontrol
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn backend.app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: promake-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 10000
+
+databases:
+  - name: promake-db
+    databaseName: promake
+    user: promake
+    plan: free

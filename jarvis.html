@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jarvis - Assistente Promake</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--primary:#6C5CE7;--primary-glow:rgba(108,92,231,0.4);--bg:#0A0A14;--bg-card:#12121F;--surface:#1A1A2E;--text:#E8E8F0;--text-muted:#8888AA;--border:#2A2A45;--success:#00C853;--warning:#FFD600;--danger:#FF1744;--info:#00B0FF;--radius:16px;--safe-bottom:env(safe-area-inset-bottom,0px)}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none;-webkit-user-select:none}
+::selection{background:var(--primary);color:#fff}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ─── Header ─── */
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(10,10,20,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+.header-brand{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;letter-spacing:-0.5px}
+.header-brand i{color:var(--primary);font-size:22px;filter:drop-shadow(0 0 8px var(--primary-glow))}
+.header-brand span{background:linear-gradient(135deg,var(--primary),var(--info));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-right{display:flex;align-items:center;gap:10px}
+.header-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all .2s}
+.header-btn:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+.header-btn.active{background:var(--success);border-color:var(--success);color:#fff}
+
+/* ─── Main Layout ─── */
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+.main::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(108,92,231,0.06) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+
+/* ─── Voice Orb ─── */
+.orb-container{position:relative;margin-bottom:24px;cursor:pointer}
+.orb-ring{position:absolute;inset:-20px;border-radius:50%;border:2px solid rgba(108,92,231,0.15);animation:pulse-ring 3s ease-in-out infinite}
+.orb-ring:nth-child(2){inset:-40px;animation-delay:0.5s}
+.orb-ring:nth-child(3){inset:-60px;animation-delay:1s}
+@keyframes pulse-ring{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.1;transform:scale(1.05)}}
+.orb{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(108,92,231,0.4),rgba(108,92,231,0.15),rgba(10,10,20,0.8));border:2px solid rgba(108,92,231,0.3);display:flex;align-items:center;justify-content:center;position:relative;transition:all .4s ease;box-shadow:0 0 40px rgba(108,92,231,0.1)}
+.orb.listening{border-color:var(--success);box-shadow:0 0 60px rgba(0,200,83,0.2),inset 0 0 40px rgba(0,200,83,0.05)}
+.orb.listening .orb-icon{color:var(--success)}
+.orb.processing{border-color:var(--warning);box-shadow:0 0 60px rgba(255,214,0,0.2),inset 0 0 40px rgba(255,214,0,0.05)}
+.orb.processing .orb-icon{color:var(--warning)}
+.orb.speaking{border-color:var(--primary);box-shadow:0 0 80px var(--primary-glow),inset 0 0 60px rgba(108,92,231,0.08)}
+.orb.speaking .orb-icon{color:var(--primary)}
+.orb-icon{font-size:48px;color:var(--text);transition:color .3s;filter:drop-shadow(0 0 20px rgba(108,92,231,0.3))}
+.orb-label{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--text-muted);white-space:nowrap;font-weight:500}
+
+/* ─── Waveform Bars ─── */
+.waveform{display:flex;align-items:center;gap:3px;height:24px;margin-top:8px;opacity:0;transition:opacity .3s}
+.waveform.active{opacity:1}
+.waveform span{width:3px;border-radius:2px;background:var(--primary);animation:wave 0.8s ease-in-out infinite;height:4px}
+.waveform span:nth-child(2){animation-delay:0.1s;height:8px;background:var(--info)}
+.waveform span:nth-child(3){animation-delay:0.2s;height:16px}
+.waveform span:nth-child(4){animation-delay:0.3s;height:20px;background:var(--info)}
+.waveform span:nth-child(5){animation-delay:0.4s;height:16px}
+.waveform span:nth-child(6){animation-delay:0.5s;height:8px;background:var(--info)}
+.waveform span:nth-child(7){animation-delay:0.6s;height:4px}
+@keyframes wave{0%,100%{transform:scaleY(0.4)}50%{transform:scaleY(1)}}
+
+/* ─── Status / Transcript ─── */
+.status{font-size:14px;color:var(--text-muted);text-align:center;margin-bottom:4px;min-height:22px;transition:color .3s}
+.status.listening{color:var(--success)}.status.processing{color:var(--warning)}.status.speaking{color:var(--primary)}.status.error{color:var(--danger)}
+.transcript{font-size:15px;color:var(--text);text-align:center;max-width:500px;padding:8px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;min-height:40px;display:flex;align-items:center;justify-content:center;margin-top:8px;transition:all .3s;word-break:break-word}
+.transcript.empty{color:var(--text-muted);font-size:13px}
+
+/* ─── Response ─── */
+.response-area{max-width:640px;width:100%;margin-top:20px;max-height:200px;overflow-y:auto;padding:0 4px}
+.response-msg{padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;animation:fadeUp 0.3s ease;font-size:14px;line-height:1.6;display:flex;gap:10px;align-items:flex-start}
+.response-msg .icon{font-size:18px;color:var(--primary);flex-shrink:0;margin-top:1px}
+.response-msg .text{flex:1;word-break:break-word}
+.response-msg .text .highlight{color:var(--primary);font-weight:600}
+.response-msg .text .success{color:var(--success)}
+.response-msg .text .danger{color:var(--danger)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Commands Grid ─── */
+.commands-panel{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.commands-panel.show{display:flex}
+.commands-modal{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto}
+.commands-modal h3{font-size:18px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.commands-modal h3 i{color:var(--primary)}
+.commands-close{float:right;background:none;border:none;color:var(--text-muted);font-size:24px;cursor:pointer;padding:0 4px}
+.commands-close:hover{color:var(--text)}
+.cmd-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cmd-item{padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;transition:all .2s}
+.cmd-item:hover{border-color:var(--primary)}
+.cmd-item i{color:var(--primary);width:18px;text-align:center;font-size:14px}
+.cmd-item .cmd{color:var(--text);font-weight:500}
+.cmd-item .desc{color:var(--text-muted);font-size:11px;margin-left:auto}
+
+/* ─── Mic Button ─── */
+.mic-btn{width:56px;height:56px;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--text);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;position:relative;flex-shrink:0}
+.mic-btn:hover{border-color:var(--primary);color:var(--primary);box-shadow:0 0 30px rgba(108,92,231,0.15)}
+.mic-btn.listening{border-color:var(--success);color:var(--success);background:rgba(0,200,83,0.08);box-shadow:0 0 40px rgba(0,200,83,0.2)}
+.mic-btn.processing{border-color:var(--warning);color:var(--warning);background:rgba(255,214,0,0.08);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── Footer ─── */
+.footer{display:flex;align-items:center;justify-content:center;gap:16px;padding:16px 20px;flex-shrink:0;background:rgba(10,10,20,0.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--border)}
+.footer .hint{font-size:12px;color:var(--text-muted)}
+.footer .hint i{margin-right:4px}
+
+/* ─── Toast ─── */
+.toast{position:fixed;top:20px;right:20px;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;display:none;align-items:center;gap:10px;font-size:13px;animation:slideIn .3s ease;box-shadow:0 8px 30px rgba(0,0,0,0.4)}
+.toast.show{display:flex}
+.toast.success i{color:var(--success)}.toast.error i{color:var(--danger)}.toast.info i{color:var(--info)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ─── Responsive ─── */
+@media(max-width:600px){
+  .orb{width:120px;height:120px}
+  .orb-icon{font-size:36px}
+  .orb-ring{inset:-14px}
+  .orb-ring:nth-child(2){inset:-28px}
+  .orb-ring:nth-child(3){inset:-42px}
+  .transcript{font-size:14px;padding:6px 14px}
+  .header{padding:12px 16px}
+  .main{padding:16px}
+  .cmd-grid{grid-template-columns:1fr}
+  .commands-modal{padding:20px;margin:8px}
+  .mic-btn{width:48px;height:48px;font-size:18px}
+  .response-area{max-height:140px}
+}
+@media(max-width:400px){
+  .orb{width:100px;height:100px}
+  .orb-icon{font-size:30px}
+  .footer .hint{font-size:10px}
+}
+
+/* ─── Ambient glow ─── */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:-1}
+.ambient-spot{position:absolute;width:400px;height:400px;border-radius:50%;filter:blur(100px);opacity:0.06;transition:all .6s}
+.ambient-spot.s1{top:-100px;right:-100px;background:var(--primary);animation:drift 12s ease-in-out infinite}
+.ambient-spot.s2{bottom:-100px;left:-100px;background:var(--info);animation:drift 16s ease-in-out infinite reverse}
+@keyframes drift{0%,100%{transform:translate(0,0)}33%{transform:translate(30px,-20px)}66%{transform:translate(-20px,30px)}}
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="ambient-spot s1"></div>
+  <div class="ambient-spot s2"></div>
+</div>
+
+<header class="header">
+  <div class="header-brand">
+    <i class="fas fa-robot"></i>
+    <span>Jarvis</span>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" onclick="toggleCommands()" title="Comandos">
+      <i class="fas fa-lightbulb"></i>
+    </button>
+    <button class="header-btn" onclick="toggleListening()" id="micToggle" title="Ativar/Desativar">
+      <i class="fas fa-microphone"></i>
+    </button>
+    <button class="header-btn" onclick="location.href='/'" title="Dashboard">
+      <i class="fas fa-th-large"></i>
+    </button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="orb-container" onclick="toggleListening()">
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb-ring"></div>
+    <div class="orb" id="orb">
+      <i class="fas fa-robot orb-icon" id="orbIcon"></i>
+    </div>
+    <div class="orb-label" id="orbLabel">Toque para falar</div>
+  </div>
+
+  <div class="waveform" id="waveform">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="status" id="status">Clique no microfone ou no orbe para falar</div>
+
+  <div class="transcript empty" id="transcript">
+    <span id="placeholderText">Seu comando aparecerá aqui...</span>
+  </div>
+
+  <div class="response-area" id="responseArea"></div>
+</div>
+
+<footer class="footer">
+  <button class="mic-btn" id="micBtn" onclick="toggleListening()">
+    <i class="fas fa-microphone"></i>
+  </button>
+  <span class="hint"><i class="fas fa-keyboard"></i> Digite /help para comandos</span>
+</footer>
+
+<!-- Commands Panel -->
+<div class="commands-panel" id="commandsPanel">
+  <div class="commands-modal">
+    <button class="commands-close" onclick="toggleCommands()">&times;</button>
+    <h3><i class="fas fa-bolt"></i> Comandos de Voz</h3>
+    <div class="cmd-grid">
+      <div class="cmd-item"><i class="fas fa-microchip"></i><span class="cmd">Status</span><span class="desc">Status do sistema</span></div>
+      <div class="cmd-item"><i class="fas fa-clock"></i><span class="cmd">Horas</span><span class="desc">Hora atual</span></div>
+      <div class="cmd-item"><i class="fas fa-calendar"></i><span class="cmd">Data</span><span class="desc">Data de hoje</span></div>
+      <div class="cmd-item"><i class="fas fa-users"></i><span class="cmd">Clientes</span><span class="desc">Listar clientes</span></div>
+      <div class="cmd-item"><i class="fas fa-tasks"></i><span class="cmd">Projetos</span><span class="desc">Listar projetos</span></div>
+      <div class="cmd-item"><i class="fas fa-chart-line"></i><span class="cmd">Financeiro</span><span class="desc">Resumo financeiro</span></div>
+      <div class="cmd-item"><i class="fas fa-user-plus"></i><span class="cmd">Leads</span><span class="desc">Listar leads</span></div>
+      <div class="cmd-item"><i class="fas fa-bell"></i><span class="cmd">Notificações</span><span class="desc">Não lidas</span></div>
+      <div class="cmd-item"><i class="fas fa-calendar-week"></i><span class="cmd">Agenda</span><span class="desc">Eventos do mês</span></div>
+      <div class="cmd-item"><i class="fas fa-rocket"></i><span class="cmd">Abrir [app]</span><span class="desc">Abrir programa</span></div>
+      <div class="cmd-item"><i class="fas fa-cloud-sun"></i><span class="cmd">Clima</span><span class="desc">Previsão do tempo</span></div>
+      <div class="cmd-item"><i class="fas fa-hand-wave"></i><span class="cmd">Olá / Oi</span><span class="desc">Saudação</span></div>
+    </div>
+    <p style="margin-top:16px;font-size:12px;color:var(--text-muted);text-align:center">
+      <i class="fas fa-info-circle"></i> Digite <strong>/help</strong> no teclado ou clique no microfone para falar
+    </p>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+const TOKEN = localStorage.getItem('promake_token') || '1';
+
+let isListening = false;
+let isSpeaking = false;
+let recognition = null;
+let synth = window.speechSynthesis;
+let wakeWordDetected = false;
+let autoListen = false;
+let inactivityTimer = null;
+let robotVoice = null;
+
+function findRobotVoice() {
+  if (!synth) return;
+  const voices = synth.getVoices();
+  for (const v of voices) {
+    const n = v.name.toLowerCase();
+    if (n.includes('microsoft') && (n.includes('david') || n.includes('mark') || n.includes('james'))) {
+      robotVoice = v; break;
+    }
+  }
+  if (!robotVoice) {
+    for (const v of voices) {
+      const n = v.name.toLowerCase();
+      if ((n.includes('google') || n.includes('microsoft')) && v.lang.startsWith('en')) {
+        robotVoice = v; break;
+      }
+    }
+  }
+  if (!robotVoice && voices.length > 0) robotVoice = voices[0];
+}
+if (synth) {
+  if (synth.getVoices().length) findRobotVoice();
+  synth.onvoiceschanged = findRobotVoice;
+}
+
+const orb = document.getElementById('orb');
+const orbIcon = document.getElementById('orbIcon');
+const orbLabel = document.getElementById('orbLabel');
+const status = document.getElementById('status');
+const transcript = document.getElementById('transcript');
+const placeholderText = document.getElementById('placeholderText');
+const responseArea = document.getElementById('responseArea');
+const micBtn = document.getElementById('micBtn');
+const micToggle = document.getElementById('micToggle');
+const waveform = document.getElementById('waveform');
+
+// ─── Init Speech Recognition ───
+function initRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    setStatus('Seu navegador não suporta reconhecimento de voz', 'error');
+    showToast('Use Chrome ou Edge para comandos de voz', 'error');
+    return false;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'pt-BR';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 3;
+
+  recognition.onstart = () => {
+    isListening = true;
+    orb.classList.add('listening');
+    micBtn.classList.add('listening');
+    micToggle.classList.add('active');
+    waveform.classList.add('active');
+    setStatus('Ouvindo...', 'listening');
+    orbLabel.textContent = 'Fale agora...';
+    clearInactivity();
+  };
+
+  recognition.onresult = (e) => {
+    let finalText = '';
+    let interimText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finalText += e.results[i][0].transcript;
+      } else {
+        interimText += e.results[i][0].transcript;
+      }
+    }
+    if (interimText) {
+      setTranscript(interimText + '...', false);
+    }
+    if (finalText) {
+      setTranscript(finalText, true);
+      processCommand(finalText.toLowerCase().trim());
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.error('Speech error:', e.error);
+    if (e.error === 'no-speech') {
+      setStatus('Nada detectado. Tente novamente.', 'error');
+      stopListening();
+      return;
+    }
+    if (e.error === 'aborted') return;
+    setStatus(`Erro: ${e.error}`, 'error');
+    stopListening();
+  };
+
+  recognition.onend = () => {
+    if (isListening && !isSpeaking) {
+      if (autoListen) {
+        setTimeout(() => { if (!isSpeaking) startListening(); }, 800);
+      } else {
+        stopListening();
+      }
+    }
+  };
+
+  return true;
+}
+
+// ─── Start / Stop Listening ───
+function startListening() {
+  if (!recognition && !initRecognition()) return;
+  if (isSpeaking) { synth.cancel(); isSpeaking = false; }
+  try { recognition.start(); } catch(e) {}
+}
+
+function stopListening() {
+  isListening = false;
+  try { if (recognition) recognition.stop(); } catch(e) {}
+  orb.classList.remove('listening', 'processing', 'speaking');
+  micBtn.classList.remove('listening', 'processing');
+  micToggle.classList.remove('active');
+  waveform.classList.remove('active');
+  setStatus('Clique no microfone para falar', '');
+  orbLabel.textContent = 'Toque para falar';
+}
+
+function toggleListening() {
+  if (isListening) { autoListen = false; stopListening(); }
+  else { autoListen = true; startListening(); }
+}
+
+// ─── Set States ───
+function setStatus(text, type) {
+  status.textContent = text;
+  status.className = 'status' + (type ? ' ' + type : '');
+}
+
+function setTranscript(text, isFinal) {
+  transcript.classList.remove('empty');
+  placeholderText.textContent = isFinal ? text : text;
+  if (isFinal) {
+    addResponse('command', text);
+  }
+}
+
+function clearTranscript() {
+  transcript.classList.add('empty');
+  placeholderText.textContent = 'Seu comando aparecerá aqui...';
+}
+
+function setOrbState(state) {
+  orb.className = 'orb';
+  if (state) orb.classList.add(state);
+}
+
+// ─── Speak ───
+function speak(text, callback) {
+  if (!synth) { if (callback) callback(); return; }
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'pt-BR';
+  if (robotVoice) {
+    utterance.voice = robotVoice;
+    utterance.rate = 0.75;
+    utterance.pitch = 0.45;
+  } else {
+    utterance.rate = 0.8;
+    utterance.pitch = 0.4;
+  }
+  isSpeaking = true;
+  setOrbState('speaking');
+  setStatus('Falando...', 'speaking');
+  orbLabel.textContent = 'Falando...';
+
+  utterance.onend = () => {
+    isSpeaking = false;
+    setOrbState('');
+    setStatus('', '');
+    orbLabel.textContent = 'Toque para falar';
+    if (callback) callback();
+    if (autoListen) {
+      setTimeout(() => { if (!isSpeaking) startListening(); }, 500);
+    }
+  };
+
+  utterance.onerror = () => {
+    isSpeaking = false;
+    setOrbState('');
+    if (callback) callback();
+  };
+
+  synth.speak(utterance);
+}
+
+// ─── Add Response Bubble ───
+function addResponse(type, content) {
+  const div = document.createElement('div');
+  div.className = 'response-msg';
+  if (type === 'command') {
+    div.innerHTML = `<i class="fas fa-microphone icon"></i><div class="text">${content}</div>`;
+  } else if (type === 'system') {
+    div.innerHTML = `<i class="fas fa-database icon"></i><div class="text">${content}</div>`;
+  } else {
+    div.innerHTML = `<i class="fas fa-robot icon"></i><div class="text">${content}</div>`;
+  }
+  responseArea.appendChild(div);
+  responseArea.scrollTop = responseArea.scrollHeight;
+  if (responseArea.children.length > 20) {
+    responseArea.removeChild(responseArea.firstChild);
+  }
+}
+
+// ─── API Call ───
+async function apiCall(endpoint, method = 'GET', body = null) {
+  try {
+    const opts = {
+      method,
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API_BASE + endpoint, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { error: err.error || `HTTP ${res.status}` };
+    }
+    return await res.json();
+  } catch (e) {
+    return { error: 'Erro de conexão com o servidor' };
+  }
+}
+
+// ─── Process Commands ───
+async function processCommand(text) {
+  setOrbState('processing');
+  micBtn.classList.add('processing');
+  setStatus('Processando...', 'processing');
+
+  let response = '';
+  let speechText = '';
+
+  // Normalize
+  text = text.replace(/[^\w\s]/g, '').trim();
+
+  // ─── Help ───
+  if (/^(ajuda|help|comandos|o que você sabe|o que voce sabe)/i.test(text)) {
+    speechText = 'Aqui estão meus comandos: Status, Clientes, Projetos, Leads, Financeiro, Agenda, Notificações, Horas, Data, Clima, Abrir Programa e mais. Digite /help ou clique no botão de comandos para ver a lista completa.';
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Greetings ───
+  if (/^(olá|ola|oi|hey|jarvis|e aí|e ai)/i.test(text)) {
+    const hora = new Date().getHours();
+    let saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    speechText = `${saudacao}! Sou o Jarvis, seu assistente virtual Promake. Como posso ajudar? Diga um comando ou digite /help para ver o que eu posso fazer.`;
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Time ───
+  if (/(horas?|hora|que horas são|que horas sao)/i.test(text)) {
+    const now = new Date();
+    speechText = `Agora são ${now.getHours().toString().padStart(2,'0')} horas e ${now.getMinutes().toString().padStart(2,'0')} minutos.`;
+    addResponse('jarvis', `<span class="highlight"><i class="fas fa-clock"></i> ${speechText}</span>`);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Date ───
+  if (/(data|dia|que dia é hoje|que dia e hoje)/i.test(text)) {
+    const now = new Date();
+    const dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+    const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    speechText = `Hoje é ${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}.`;
+    addResponse('jarvis', `<span class="highlight"><i class="fas fa-calendar"></i> ${speechText}</span>`);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Status ───
+  if (/(status|painel|dashboard|situação|situacao|como está)/i.test(text)) {
+    const data = await apiCall('/api/dashboard');
+    if (data.error) {
+      speechText = `Não consegui acessar o status do sistema. Erro: ${data.error}`;
+    } else {
+      speechText = `Status do Promake: ${data.active_projects} projetos ativos, ${data.active_clients} clientes ativos, ${data.new_leads} novos leads. Receita do mês: R$ ${(data.revenue_month || 0).toFixed(2)}. Despesas: R$ ${(data.expenses_month || 0).toFixed(2)}. Lucro: R$ ${(data.profit_month || 0).toFixed(2)}.`;
+      addResponse('system', `
+        <strong>Status do Sistema</strong><br>
+        <span class="highlight">${data.active_projects}</span> Projetos ativos &bull;
+        <span class="highlight">${data.active_clients}</span> Clientes ativos &bull;
+        <span class="highlight">${data.new_leads}</span> Novos leads<br>
+        <span class="success">R$ ${(data.revenue_month || 0).toFixed(2)}</span> Receita &bull;
+        <span class="danger">R$ ${(data.expenses_month || 0).toFixed(2)}</span> Despesas &bull;
+        <span class="highlight">R$ ${(data.profit_month || 0).toFixed(2)}</span> Lucro
+      `);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Clients ───
+  if (/(clientes|cliente|listar clientes)/i.test(text)) {
+    const data = await apiCall('/api/clients');
+    if (data.error) {
+      speechText = `Erro ao buscar clientes: ${data.error}`;
+    } else if (data.length === 0) {
+      speechText = 'Nenhum cliente cadastrado no sistema.';
+    } else {
+      const names = data.slice(0, 10).map(c => c.name).join(', ');
+      speechText = `Encontrei ${data.length} clientes. Os principais são: ${names}.`;
+      let html = `<strong>${data.length} Clientes</strong><br>`;
+      data.slice(0, 8).forEach(c => {
+        html += `<span class="highlight">${c.name}</span> ${c.company ? '- ' + c.company : ''} <span style="color:var(--text-muted);font-size:12px">${c.email}</span><br>`;
+      });
+      if (data.length > 8) html += `<span style="color:var(--text-muted)">...e mais ${data.length - 8} clientes</span>`;
+      addResponse('system', html);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Projects ───
+  if (/(projetos?|projeto|listar projetos)/i.test(text)) {
+    const data = await apiCall('/api/projects');
+    if (data.error) {
+      speechText = `Erro ao buscar projetos: ${data.error}`;
+    } else if (data.length === 0) {
+      speechText = 'Nenhum projeto encontrado.';
+    } else {
+      const names = data.slice(0, 8).map(p => p.name).join(', ');
+      speechText = `Tenho ${data.length} projetos. Destes: ${names}.`;
+      let html = `<strong>${data.length} Projetos</strong><br>`;
+      data.slice(0, 6).forEach(p => {
+        const statusClass = p.status === 'completed' ? 'success' : p.status === 'active' ? 'highlight' : 'text-muted';
+        html += `<span class="${statusClass}">${p.name}</span> <span style="color:var(--text-muted);font-size:12px">${p.status}${p.client_name ? ' - ' + p.client_name : ''}</span><br>`;
+      });
+      if (data.length > 6) html += `<span style="color:var(--text-muted)">...e mais ${data.length - 6} projetos</span>`;
+      addResponse('system', html);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Leads ───
+  if (/(leads?|lead|listar leads)/i.test(text)) {
+    const data = await apiCall('/api/leads');
+    if (data.error) {
+      speechText = `Erro ao buscar leads: ${data.error}`;
+    } else if (data.length === 0) {
+      speechText = 'Nenhum lead cadastrado.';
+    } else {
+      const names = data.slice(0, 6).map(l => l.name).join(', ');
+      speechText = `Existem ${data.length} leads no funil: ${names}.`;
+      let html = `<strong>${data.length} Leads</strong><br>`;
+      data.slice(0, 8).forEach(l => {
+        html += `<span class="highlight">${l.name}</span> <span style="color:var(--text-muted);font-size:12px">${l.status}${l.company ? ' - ' + l.company : ''}</span><br>`;
+      });
+      if (data.length > 8) html += `<span style="color:var(--text-muted)">...e mais ${data.length - 8} leads</span>`;
+      addResponse('system', html);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Finance ───
+  if (/(financeiro|finance|faturamento|receita|despesas?|lucro|resumo financeiro)/i.test(text)) {
+    const data = await apiCall('/api/finance/summary');
+    if (data.error) {
+      speechText = `Erro ao buscar dados financeiros: ${data.error}`;
+    } else {
+      speechText = `Resumo financeiro do mês: Receita de R$ ${(data.revenue_month || 0).toFixed(2)}. Despesas de R$ ${(data.expenses_month || 0).toFixed(2)}. Lucro de R$ ${(data.profit_month || 0).toFixed(2)}.`;
+      addResponse('system', `
+        <strong>Resumo Financeiro</strong><br>
+        <span style="color:var(--success)">Receita: R$ ${(data.revenue_month || 0).toFixed(2)}</span> &bull;
+        <span style="color:var(--danger)">Despesas: R$ ${(data.expenses_month || 0).toFixed(2)}</span> &bull;
+        <span class="highlight">Lucro: R$ ${(data.profit_month || 0).toFixed(2)}</span><br>
+        <span style="color:var(--text-muted);font-size:12px">Ano: Receita R$ ${(data.revenue_year || 0).toFixed(2)} | Lucro R$ ${(data.profit_year || 0).toFixed(2)}</span>
+      `);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Agenda / Calendar ───
+  if (/(agenda|eventos?|calend[áa]rio|compromissos?|reuni[ãa]o)/i.test(text)) {
+    const now = new Date();
+    const data = await apiCall(`/api/calendar?month=${now.getMonth()+1}&year=${now.getFullYear()}`);
+    if (data.error) {
+      speechText = `Erro ao buscar agenda: ${data.error}`;
+    } else if (!data.length) {
+      speechText = 'Nenhum evento agendado para este mês.';
+    } else {
+      const items = data.slice(0, 6);
+      const titles = items.map(e => `${e.title} dia ${e.date}`).join(', ');
+      speechText = `Encontrei ${data.length} eventos neste mês: ${titles}.`;
+      let html = `<strong>Agenda - ${data.length} eventos</strong><br>`;
+      items.forEach(e => {
+        html += `<span class="highlight">${e.title}</span> <span style="color:var(--text-muted);font-size:12px">${e.date}${e.time ? ' às ' + e.time : ''}</span><br>`;
+      });
+      if (data.length > 6) html += `<span style="color:var(--text-muted)">...e mais ${data.length - 6} eventos</span>`;
+      addResponse('system', html);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Notifications ───
+  if (/(notificaç[ãa]o|notificações|notificacoes|notificacao|avisos|alerta)/i.test(text)) {
+    const data = await apiCall('/api/notifications');
+    if (data.error) {
+      speechText = `Erro ao buscar notificações: ${data.error}`;
+    } else if (data.unread === 0) {
+      speechText = 'Você não tem notificações não lidas.';
+      addResponse('jarvis', '<span class="success"><i class="fas fa-check-circle"></i> Nenhuma notificação não lida</span>');
+    } else {
+      const notifs = (data.notifications || []).filter(n => !n.read).slice(0, 5);
+      const titles = notifs.map(n => n.title).join(', ');
+      speechText = `Você tem ${data.unread} notificações não lidas: ${titles}.`;
+      let html = `<strong>${data.unread} Notificações não lidas</strong><br>`;
+      notifs.forEach(n => {
+        html += `<span class="highlight">${n.title}</span> <span style="color:var(--text-muted);font-size:12px">${n.message || ''}</span><br>`;
+      });
+      addResponse('system', html);
+    }
+    if (speechText) speak(speechText);
+    return;
+  }
+
+  // ─── Open App ───
+  if (/abrir/i.test(text)) {
+    const apps = {
+      'dashboard': '/', 'painel': '/',
+      'clientes': '#', 'projetos': '#', 'financeiro': '#',
+      'config': '#', 'configuração': '#', 'configuracao': '#',
+      'calculadora': 'calc:', 'calc': 'calc:',
+      'bloco de notas': 'notepad:', 'notepad': 'notepad:',
+      'cmd': 'cmd:', 'terminal': 'cmd:', 'prompt': 'cmd:',
+      'explorador': 'explorer:', 'explorer': 'explorer:',
+      'chrome': 'chrome:', 'edge': 'microsoft-edge:',
+      'spotify': 'spotify:', 'whatsapp': 'whatsapp:'
+    };
+    let found = false;
+    for (const [key, url] of Object.entries(apps)) {
+      if (text.includes(key)) {
+        if (url.startsWith('http') || url === '/') {
+          window.open(url, '_blank');
+        } else {
+          try { window.open(url); } catch(e) {}
+        }
+        speechText = `Abrindo ${key}...`;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      speechText = 'Desculpe, não encontrei este aplicativo. Tente: Dashboard, Clientes, Projetos, Calculadora, Bloco de Notas, Terminal.';
+    }
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Weather ───
+  if (/(clima|tempo|temperatura|previs[ãa]o)/i.test(text)) {
+    speechText = 'Não tenho uma API de clima configurada no momento. Você pode consultar o clima pelo seu navegador ou celular.';
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Who are you / About ───
+  if (/(quem é você|quem e voce|quem é|o que é|o que e|quem criou)/i.test(text)) {
+    speechText = 'Eu sou o Jarvis, assistente virtual inteligente do sistema Promake CyberControl. Fui criado para ajudar na gestão da sua agência ou empresa com comandos de voz. Posso consultar clientes, projetos, finanças, agenda e muito mais.';
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Goodbye ───
+  if (/(tchau|até logo|ate logo|desligar|finalizar|sair|obrigado|valeu)/i.test(text)) {
+    speechText = 'Até logo! Estarei aqui quando precisar.';
+    addResponse('jarvis', speechText);
+    autoListen = false;
+    speak(speechText, () => stopListening());
+    return;
+  }
+
+  // ─── Thanks ───
+  if (/(obrigado|obrigada|valeu|brigado)/i.test(text)) {
+    speechText = 'Por nada! Estou aqui para ajudar. Mais algum comando?';
+    addResponse('jarvis', speechText);
+    speak(speechText);
+    return;
+  }
+
+  // ─── Unknown ───
+  speechText = `Desculpe, não entendi o comando "${text}". Diga "Ajuda" para ver os comandos disponíveis.`;
+  setStatus('Comando não reconhecido', 'error');
+  addResponse('jarvis', speechText);
+  speak(speechText);
+}
+
+// ─── Keyboard input ───
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    const cmd = prompt('Digite um comando:');
+    if (cmd && cmd.trim()) {
+      processCommand(cmd.trim());
+    }
+  }
+  if (e.key === ' ' && e.target === document.body) {
+    e.preventDefault();
+    toggleListening();
+  }
+  if (e.key === 'Escape') {
+    if (isListening) stopListening();
+    document.getElementById('commandsPanel').classList.remove('show');
+  }
+});
+
+// ─── Commands Panel ───
+function toggleCommands() {
+  document.getElementById('commandsPanel').classList.toggle('show');
+}
+
+// ─── Inactivity ───
+function clearInactivity() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    if (isListening) {
+      autoListen = false;
+      stopListening();
+      setStatus('Inatividade. Clique para falar.', '');
+    }
+  }, 15000);
+}
+
+// ─── Toast ───
+function showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = `toast show ${type}`;
+  t.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> ${msg}`;
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', () => {
+  // Check browser support
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    setStatus('Use Chrome ou Edge para comandos de voz', 'error');
+    showToast('Reconhecimento de voz não suportado neste navegador', 'error');
+  }
+
+  // Wake word detection via simple approach
+  setStatus('Jarvis pronto. Clique no microfone ou pressione Espaço.', '');
+  addResponse('jarvis', 'Olá! Sou o <span class="highlight">Jarvis</span>, seu assistente virtual. Clique no microfone e fale um comando, ou digite <strong>/help</strong> para começar.');
+});
+</script>
+</body>
+</html>
