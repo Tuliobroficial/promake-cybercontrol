@@ -104,9 +104,8 @@ const App = {
     document.getElementById('lpYear').textContent = new Date().getFullYear();
     this.loadPublicSlides();
     this.loadLandingContent();
-    const savedEmail = localStorage.getItem('promake_email') || 'admin@promake.com';
+    const savedEmail = localStorage.getItem('promake_email') || '';
     document.getElementById('loginEmail').value = savedEmail;
-    document.getElementById('loginPassword').value = 'admin123';
     if (savedEmail) document.getElementById('rememberUser').checked = true;
     const h = () => this.handleLogin();
     document.getElementById('loginBtn').addEventListener('click', h);
