@@ -53,6 +53,16 @@ class CustomJSONProvider(DefaultJSONProvider):
         return super().default(obj)
 app.json = CustomJSONProvider(app)
 
+import traceback as _traceback
+
+@app.errorhandler(500)
+def _handle_500(e):
+    tb = _traceback.format_exc()
+    original = getattr(e, "original_exception", None)
+    if original:
+        tb = "".join(_traceback.format_exception(type(original), original, original.__traceback__))
+    return jsonify({"error": str(e), "traceback": tb}), 500
+
 JWT_SECRET = os.environ.get("JWT_SECRET", "promake-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRES_MINUTES = 15
