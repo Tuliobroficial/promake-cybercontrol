@@ -1,5 +1,6 @@
 import json, os, sys, time, re, hashlib, hmac, threading, smtplib, random, string
 from datetime import datetime, timedelta, date, timezone
+from decimal import Decimal
 from pathlib import Path
 from functools import wraps
 from uuid import uuid4
@@ -34,6 +35,7 @@ if PYLIB.exists():
     sys.path.insert(0, str(PYLIB))
 
 from flask import Flask, jsonify, request, send_from_directory, g, Response
+from flask.json.provider import DefaultJSONProvider
 from fpdf import FPDF
 from db_adapter import get_db, close_db, row_to_dict, rows_to_list, Database, _Row
 
@@ -41,6 +43,15 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "promake-secret-change-in-production")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, (bytes, bytearray)):
+            return obj.decode("utf-8", errors="replace")
+        return super().default(obj)
+app.json = CustomJSONProvider(app)
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "promake-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
