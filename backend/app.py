@@ -3513,15 +3513,18 @@ def api_design_card(cid):
 def api_design_stages(pid):
     db = get_db()
     if request.method == "POST":
-        data = request.get_json() or {}
-        cur = get_current_user()
-        max_order = db.execute("SELECT COALESCE(MAX(order_idx),-1) FROM design_stages WHERE project_id=?", (pid,)).fetchone()[0]
-        default_x = (max_order + 1) * 300
-        db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
-            (pid, data.get("title"), data.get("description",""), data.get("color","#6C5CE7"), max_order+1, default_x, cur["id"]))
-        db.commit()
-        sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-        return jsonify({"ok":True, "id":sid})
+        try:
+            data = request.get_json() or {}
+            cur = get_current_user()
+            max_order = db.execute("SELECT COALESCE(MAX(order_idx),-1) FROM design_stages WHERE project_id=?", (pid,)).fetchone()[0]
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,created_by) VALUES (?,?,?,?,?,?)",
+                (pid, data.get("title"), data.get("description",""), data.get("color","#6C5CE7"), max_order+1, cur["id"]))
+            db.commit()
+            sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+            return jsonify({"ok":True, "id":sid})
+        except Exception as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 500
     rows = db.execute("SELECT * FROM design_stages WHERE project_id=? ORDER BY order_idx", (pid,)).fetchall()
     return jsonify(rows_to_list(rows))
 
