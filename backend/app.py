@@ -4429,6 +4429,54 @@ def api_seed_design():
         db.rollback()
         return jsonify({"error": str(e)}), 500
 
+# ─── Cleanup duplicates ──────────────────────
+
+@app.route("/api/admin/cleanup-duplicates", methods=["POST"])
+@require_auth
+@require_role("admin")
+def api_cleanup_duplicates():
+    db = get_db()
+    results = {}
+    # Dedup strategy: group by unique key (email or name), keep lowest id, delete rest
+    rules = [
+        ("clients", "email", "name", 5),
+        ("leads", "email", "name", 4),
+        ("contracts", "title", "client_id", 2),
+        ("projects", "name", "client_id", 5),
+        ("service_orders", "title", "project_id", 3),
+        ("calendar_events", "title", "date", 3),
+        ("transactions", "description", "value", 6),
+        ("tasks", "title", "service_order_id", 3),
+        ("plans", "name", "price", 3),
+        ("client_plans", "client_id", "plan_id", 3),
+        ("design_projects", "name", "client_name", 3),
+        ("design_cards", "title", "project_id", 5),
+    ]
+    try:
+        for table, key1, key2, expected in rules:
+            try:
+                rows = db.execute(f"SELECT id, {key1}, {key2} FROM {table} ORDER BY id").fetchall()
+                seen = {}
+                delete_ids = []
+                for r in rows:
+                    k = (r[key1], r[key2])
+                    if k in seen:
+                        delete_ids.append(r["id"])
+                    else:
+                        seen[k] = r["id"]
+                if delete_ids:
+                    for did in delete_ids:
+                        db.execute(f"DELETE FROM {table} WHERE id=?", (did,))
+                    db.commit()
+                results[table] = {"kept": len(seen), "deleted": len(delete_ids)}
+            except Exception as et:
+                results[table] = {"error": str(et)[:80]}
+        # Linnear landing_config dedup (composite PK already prevents)
+        return jsonify({"ok": True, "results": results})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # ─── Restore data from local backup ──────────
 
 @app.route("/api/admin/restore-data", methods=["POST"])
