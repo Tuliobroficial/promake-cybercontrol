@@ -21,6 +21,53 @@ def _cleanup_old():
     for f in backups[MAX_BACKUPS:]:
         f.unlink(missing_ok=True)
 
+def _pg_dump_python(url):
+    """Fallback: dump via SQL COPY commands using psycopg2."""
+    import psycopg2
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"backup_{ts}.sql"
+    filepath = BACKUP_DIR / filename
+    try:
+        conn = psycopg2.connect(url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")
+        tables = [r[0] for r in cur.fetchall()]
+        lines = []
+        for table in tables:
+            cur.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position", (table,))
+            cols = cur.fetchall()
+            col_names = [c[0] for c in cols]
+            lines.append(f"-- Table: {table}")
+            lines.append(f"DELETE FROM {table};")
+            lines.append(f"INSERT INTO {table} ({', '.join(col_names)}) VALUES")
+            cur.execute(f"SELECT * FROM {table}")
+            rows = cur.fetchall()
+            if not rows:
+                lines[-1] = lines[-1].rstrip(" VALUES")
+                lines.append(f"INSERT INTO {table} DEFAULT VALUES;")
+                continue
+            vals = []
+            for row in rows:
+                esc = []
+                for v in row:
+                    if v is None:
+                        esc.append("NULL")
+                    elif isinstance(v, (int, float)):
+                        esc.append(str(v))
+                    else:
+                        esc.append("'" + str(v).replace("'", "''") + "'")
+                vals.append("(" + ", ".join(esc) + ")")
+            lines.append(",\n".join(vals) + ";")
+        lines.append("")
+        cur.close()
+        conn.close()
+        filepath.write_text("\n".join(lines), encoding="utf-8")
+        _cleanup_old()
+        return {"filename": filename, "size": filepath.stat().st_size, "timestamp": ts}
+    except Exception as e:
+        return {"error": str(e)}
+
 def _pg_dump():
     url = get_db_url()
     if not url:
@@ -30,7 +77,6 @@ def _pg_dump():
     filepath = BACKUP_DIR / filename
     try:
         env = os.environ.copy()
-        # Strip pgpass-style password from env for security
         result = subprocess.run(
             ["pg_dump", url, "--no-owner", "--no-acl", "-f", str(filepath)],
             capture_output=True, text=True, timeout=120, env=env
@@ -40,7 +86,7 @@ def _pg_dump():
         _cleanup_old()
         return {"filename": filename, "size": filepath.stat().st_size, "timestamp": ts}
     except FileNotFoundError:
-        return {"error": "pg_dump not installed"}
+        return _pg_dump_python(url)
     except Exception as e:
         return {"error": str(e)}
 
