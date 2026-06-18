@@ -1,5 +1,5 @@
 import json, os, sys, time, re, hashlib, hmac, threading, smtplib, random, string
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from pathlib import Path
 from functools import wraps
 from uuid import uuid4
@@ -8,6 +8,22 @@ from email.mime.multipart import MIMEMultipart
 import urllib.request, urllib.parse, urllib.error
 import bcrypt
 import jwt
+import html
+import base64
+import pyotp
+
+from security_module import (
+    ROLES, ACL_MODULES, has_permission, get_role_permissions,
+    require_role, require_permission, require_mfa, audit_log,
+    generate_mfa_secret, generate_mfa_qrcode_base64, verify_mfa_code,
+    generate_recovery_codes, sanitize_html, sanitize_input,
+    sanitize_request_data, apply_security_headers,
+    generate_csrf_token, require_csrf,
+    rate_limit_advanced, check_rate_limit,
+    invalidate_other_sessions, get_security_summary,
+    scan_request_for_attacks, security_monitor_scan,
+    require_not_blocked, SECURITY_HEADERS,
+)
 
 BASE_DIR = Path(__file__).parent.parent
 BACKEND_DIR = Path(__file__).parent
@@ -69,18 +85,28 @@ HOLIDAYS = {
     "12-31": {"title":"Réveillon","type":"seasonal","desc":"Virada de Ano"}
 }
 
+@app.before_request
+def before_security_check():
+    if request.method == "OPTIONS":
+        return
+    if request.path.startswith("/api/") and not request.path.startswith("/api/auth/login"):
+        if scan_request_for_attacks():
+            return jsonify({"error": "Atividade suspeita detectada"}), 403
+
 @app.after_request
 def add_cors(resp):
     origin = request.headers.get("Origin", "")
-    allowed = {"http://localhost:8081", "http://127.0.0.1:8081", "https://crm.promakeart.com"}
+    allowed = {"http://localhost:8081", "http://127.0.0.1:8081", "https://crm.promakeart.com", "http://localhost:3000"}
     if origin in allowed or not os.environ.get("DATABASE_URL"):
         resp.headers["Access-Control-Allow-Origin"] = origin
     elif os.environ.get("DATABASE_URL"):
         resp.headers["Access-Control-Allow-Origin"] = "https://crm.promakeart.com"
     else:
         resp.headers["Access-Control-Allow-Origin"] = "*"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
-    resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-CSRF-Token,X-MFA-Token"
+    resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+    resp.headers["Access-Control-Expose-Headers"] = "X-RateLimit-Limit,X-RateLimit-Reset,Retry-After"
+    apply_security_headers(resp)
     return resp
 
 CONFIG_PATH = BASE_DIR / "backend" / "config.json"
@@ -510,7 +536,44 @@ def init_db():
         revoked INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        user_name TEXT,
+        user_role TEXT,
+        action TEXT NOT NULL,
+        entity_type TEXT,
+        entity_id TEXT,
+        description TEXT,
+        details TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        timestamp TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE TABLE IF NOT EXISTS security_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_address TEXT,
+        event_type TEXT,
+        detail TEXT,
+        path TEXT,
+        user_agent TEXT,
+        blocked INTEGER DEFAULT 0,
+        timestamp TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE TABLE IF NOT EXISTS user_backup_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id),
+        code TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
     """)
+    # Migration: add MFA columns to users
+    for col in ["mfa_secret TEXT DEFAULT ''", "mfa_enabled INTEGER DEFAULT 0", "mfa_recovery TEXT DEFAULT ''"]:
+        try:
+            db.execute(f"ALTER TABLE users ADD COLUMN {col}")
+        except:
+            pass
     # Migration: add locked/x/y columns to design_stages if missing
     for col in ["locked INTEGER DEFAULT 0", "x REAL DEFAULT 0", "y REAL DEFAULT 0"]:
         try:
@@ -659,10 +722,10 @@ def check_password(password, password_hash):
 
 def create_access_token(user_id, user_role):
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "role": user_role,
-        "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES),
+        "iat": datetime.now(tz=timezone.utc),
+        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES),
         "type": "access"
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -747,7 +810,7 @@ def require_auth(f):
         db = get_db()
         user = db.execute(
             "SELECT * FROM users WHERE id=? AND active=1",
-            (payload["sub"],)
+            (int(payload["sub"]),)
         ).fetchone()
         if not user:
             return jsonify({"error": "Nao autorizado"}), 401
@@ -835,9 +898,20 @@ def api_login():
         new_hash = hash_password(password)
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
         db.commit()
+    has_mfa = user["mfa_enabled"] if "mfa_enabled" in user.keys() else 0
+    if has_mfa:
+        mfa_token = uuid4().hex
+        exp = (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+        db.execute(
+            "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?,?,?)",
+            (user["id"], mfa_token, exp)
+        )
+        db.commit()
+        audit_log("login_mfa_pending", "user", user["id"], "MFA pendente")
+        return jsonify({"mfa_required": True, "mfa_token": mfa_token, "user": row_to_dict(user)})
     access_token = create_access_token(user["id"], user["role"])
     refresh_token = create_refresh_token(user["id"])
-    log_activity("login", "usuario", user["id"], f"Login: {user['email']}")
+    audit_log("login", "user", user["id"], f"Login: {user['email']}")
     result = {"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)}
     if user["role"] == "client":
         system = db.execute(
@@ -872,6 +946,49 @@ def api_refresh():
     new_refresh = create_refresh_token(user["id"])
     return jsonify({"access_token": new_access, "refresh_token": new_refresh})
 
+@app.route("/api/auth/mfa/challenge", methods=["POST"])
+@rate_limit
+def api_mfa_challenge():
+    data = request.get_json() or {}
+    mfa_token = data.get("mfa_token", "")
+    code = data.get("code", "").strip()
+    if not mfa_token or not code:
+        return jsonify({"error": "mfa_token e code obrigatorios"}), 400
+    db = get_db()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    row = db.execute(
+        "SELECT * FROM password_resets WHERE token=? AND used=0 AND expires_at>?",
+        (mfa_token, now)
+    ).fetchone()
+    if not row:
+        return jsonify({"error": "Token MFA invalido ou expirado"}), 401
+    user = db.execute("SELECT * FROM users WHERE id=? AND active=1", (row["user_id"],)).fetchone()
+    if not user:
+        return jsonify({"error": "Usuario nao encontrado"}), 401
+    if not user["mfa_secret"]:
+        return jsonify({"error": "MFA nao configurado"}), 400
+    if verify_mfa_code(user["mfa_secret"], code):
+        db.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
+        db.commit()
+        access_token = create_access_token(user["id"], user["role"])
+        refresh_token = create_refresh_token(user["id"])
+        audit_log("login", "user", user["id"], "Login com MFA")
+        return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)})
+    bc = db.execute(
+        "SELECT id FROM user_backup_codes WHERE user_id=? AND code=? AND used=0",
+        (user["id"], code)
+    ).fetchone()
+    if bc:
+        db.execute("UPDATE password_resets SET used=1 WHERE id=?", (row["id"],))
+        db.execute("UPDATE user_backup_codes SET used=1 WHERE id=?", (bc["id"],))
+        db.commit()
+        access_token = create_access_token(user["id"], user["role"])
+        refresh_token = create_refresh_token(user["id"])
+        audit_log("login", "user", user["id"], "Login com codigo de recuperacao MFA")
+        return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)})
+    audit_log("login_mfa_failed", "user", user["id"], "Tentativa MFA invalida")
+    return jsonify({"error": "Codigo MFA invalido"}), 401
+
 @app.route("/api/auth/logout", methods=["POST"])
 @require_auth
 def api_logout():
@@ -883,7 +1000,237 @@ def api_logout():
         db.commit()
     return jsonify({"ok": True, "message": "Logout realizado"})
 
-@app.route("/api/auth/forgot-password", methods=["POST"])
+# ─── MFA Endpoints ───────────────────────────
+
+@app.route("/api/auth/mfa/setup", methods=["POST"])
+@require_auth
+@rate_limit
+def api_mfa_setup():
+    user = get_current_user()
+    db = get_db()
+    if user.get("mfa_enabled"):
+        return jsonify({"error": "MFA ja esta ativado"}), 400
+    secret = generate_mfa_secret()
+    qrcode_b64 = generate_mfa_qrcode_base64(secret, user["email"])
+    recovery_codes = generate_recovery_codes()
+    codes_str = ",".join(recovery_codes)
+    db.execute(
+        "UPDATE users SET mfa_secret=?, mfa_recovery=? WHERE id=?",
+        (secret, codes_str, user["id"])
+    )
+    for code in recovery_codes:
+        db.execute(
+            "INSERT INTO user_backup_codes (user_id, code) VALUES (?,?)",
+            (user["id"], code)
+        )
+    db.commit()
+    audit_log("mfa_setup", "user", user["id"], "MFA configurado")
+    return jsonify({
+        "secret": secret,
+        "qrcode": qrcode_b64,
+        "recovery_codes": recovery_codes
+    })
+
+@app.route("/api/auth/mfa/verify", methods=["POST"])
+@require_auth
+@rate_limit
+def api_mfa_verify():
+    user = get_current_user()
+    data = request.get_json() or {}
+    code = data.get("code", "").strip()
+    if not code:
+        return jsonify({"error": "Codigo obrigatorio"}), 400
+    db = get_db()
+    row = db.execute("SELECT mfa_secret FROM users WHERE id=?", (user["id"],)).fetchone()
+    if not row or not row["mfa_secret"]:
+        return jsonify({"error": "MFA nao configurado"}), 400
+    if verify_mfa_code(row["mfa_secret"], code):
+        db.execute("UPDATE users SET mfa_enabled=1 WHERE id=?", (user["id"],))
+        db.commit()
+        audit_log("mfa_enable", "user", user["id"], "MFA ativado")
+        return jsonify({"ok": True, "message": "MFA ativado com sucesso"})
+    bc = db.execute(
+        "SELECT id FROM user_backup_codes WHERE user_id=? AND code=? AND used=0",
+        (user["id"], code)
+    ).fetchone()
+    if bc:
+        db.execute("UPDATE user_backup_codes SET used=1 WHERE id=?", (bc["id"],))
+        db.execute("UPDATE users SET mfa_enabled=1 WHERE id=?", (user["id"],))
+        db.commit()
+        audit_log("mfa_enable", "user", user["id"], "MFA ativado via codigo de recuperacao")
+        return jsonify({"ok": True, "message": "MFA ativado com sucesso"})
+    return jsonify({"error": "Codigo invalido"}), 400
+
+@app.route("/api/auth/mfa/disable", methods=["POST"])
+@require_auth
+@rate_limit
+def api_mfa_disable():
+    user = get_current_user()
+    db = get_db()
+    db.execute(
+        "UPDATE users SET mfa_secret='', mfa_enabled=0, mfa_recovery='' WHERE id=?",
+        (user["id"],)
+    )
+    db.execute("DELETE FROM user_backup_codes WHERE user_id=?", (user["id"],))
+    db.commit()
+    audit_log("mfa_disable", "user", user["id"], "MFA desativado")
+    return jsonify({"ok": True, "message": "MFA desativado"})
+
+@app.route("/api/auth/mfa/status", methods=["GET"])
+@require_auth
+def api_mfa_status():
+    user = get_current_user()
+    db = get_db()
+    row = db.execute("SELECT mfa_enabled FROM users WHERE id=?", (user["id"],)).fetchone()
+    backup_codes_left = db.execute(
+        "SELECT COUNT(*) as c FROM user_backup_codes WHERE user_id=? AND used=0",
+        (user["id"],)
+    ).fetchone()["c"]
+    return jsonify({
+        "mfa_enabled": bool(row and row["mfa_enabled"]),
+        "backup_codes_left": backup_codes_left
+    })
+
+@app.route("/api/auth/mfa/recovery-codes", methods=["POST"])
+@require_auth
+@rate_limit
+def api_mfa_recovery_codes():
+    user = get_current_user()
+    row = g.get("current_user", {})
+    if not row.get("mfa_enabled"):
+        return jsonify({"error": "MFA nao esta ativado"}), 400
+    codes = generate_recovery_codes()
+    db = get_db()
+    db.execute("DELETE FROM user_backup_codes WHERE user_id=?", (user["id"],))
+    codes_str = ",".join(codes)
+    db.execute("UPDATE users SET mfa_recovery=? WHERE id=?", (codes_str, user["id"]))
+    for code in codes:
+        db.execute(
+            "INSERT INTO user_backup_codes (user_id, code) VALUES (?,?)",
+            (user["id"], code)
+        )
+    db.commit()
+    return jsonify({"recovery_codes": codes})
+
+# ─── Super Admin Endpoints ────────────────────
+
+@app.route("/api/super-admin/security-summary")
+@require_auth
+@require_role("super_admin", "admin")
+def api_super_admin_security():
+    return jsonify(get_security_summary())
+
+@app.route("/api/super-admin/audit-log")
+@require_auth
+@require_role("super_admin", "admin")
+def api_super_admin_audit():
+    db = get_db()
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 50, type=int)
+    offset = (page - 1) * per_page
+    action_filter = request.args.get("action", "")
+    user_filter = request.args.get("user_id", "")
+    query = "SELECT * FROM audit_log WHERE 1=1"
+    params = []
+    if action_filter:
+        query += " AND action=?"
+        params.append(action_filter)
+    if user_filter:
+        query += " AND user_id=?"
+        params.append(int(user_filter))
+    query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+    rows = db.execute(query, params).fetchall()
+    total = db.execute(
+        "SELECT COUNT(*) as c FROM audit_log"
+    ).fetchone()["c"]
+    return jsonify({
+        "rows": rows_to_list(rows),
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": -(-total // per_page)
+    })
+
+@app.route("/api/super-admin/security-events")
+@require_auth
+@require_role("super_admin", "admin")
+def api_super_admin_security_events():
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM security_events ORDER BY id DESC LIMIT 100"
+    ).fetchall()
+    return jsonify({"rows": rows_to_list(rows)})
+
+@app.route("/api/super-admin/active-sessions")
+@require_auth
+@require_role("super_admin", "admin")
+def api_super_admin_sessions():
+    db = get_db()
+    rows = db.execute(
+        """SELECT rt.*, u.name, u.email, u.role
+           FROM refresh_tokens rt JOIN users u ON rt.user_id = u.id
+           WHERE rt.revoked=0 AND rt.expires_at > datetime('now','localtime')
+           ORDER BY rt.created_at DESC LIMIT 100"""
+    ).fetchall()
+    return jsonify({"rows": rows_to_list(rows)})
+
+@app.route("/api/super-admin/block-ip", methods=["POST"])
+@require_auth
+@require_role("super_admin")
+def api_super_admin_block_ip():
+    data = request.get_json() or {}
+    ip = data.get("ip", "")
+    hours = data.get("hours", 24)
+    if not ip:
+        return jsonify({"error": "IP obrigatorio"}), 400
+    from security_module import block_ip
+    block_ip(ip, hours)
+    audit_log("block_ip", "ip", None, f"IP {ip} bloqueado por {hours}h", {"ip": ip, "hours": hours})
+    return jsonify({"ok": True, "message": f"IP {ip} bloqueado por {hours}h"})
+
+@app.route("/api/super-admin/revoke-session", methods=["POST"])
+@require_auth
+@require_role("super_admin")
+def api_super_admin_revoke_session():
+    data = request.get_json() or {}
+    token = data.get("token", "")
+    if not token:
+        return jsonify({"error": "Token obrigatorio"}), 400
+    db = get_db()
+    db.execute("UPDATE refresh_tokens SET revoked=1 WHERE token=?", (token,))
+    db.commit()
+    audit_log("revoke_session", "session", None, "Sessao revogada por super admin")
+    return jsonify({"ok": True})
+
+@app.route("/api/super-admin/users")
+@require_auth
+@require_role("super_admin", "admin")
+def api_super_admin_users():
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, name, email, role, active, mfa_enabled, created_at,
+               (SELECT COUNT(*) FROM audit_log WHERE user_id=users.id) as action_count
+        FROM users ORDER BY id
+    """).fetchall()
+    return jsonify({"rows": rows_to_list(rows)})
+
+# ─── Role info for frontend ──────────────────
+
+@app.route("/api/auth/roles")
+@require_auth
+def api_auth_roles():
+    roles_info = []
+    for key, val in ROLES.items():
+        roles_info.append({
+            "id": key,
+            "label": val["label"],
+            "priority": val["priority"],
+            "modules": get_role_permissions(key)
+        })
+    return jsonify({"roles": roles_info, "modules": ACL_MODULES, "current_role": get_current_user()["role"]})
+
+@app.route("/api/forgot-password", methods=["POST"])
 @rate_limit
 def api_forgot_password():
     data = request.get_json() or {}

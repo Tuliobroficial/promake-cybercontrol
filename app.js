@@ -214,6 +214,11 @@ const App = {
         localStorage.removeItem('promake_refresh_token');
         return;
       }
+      if (data.mfa_required) {
+        this._mfaToken = data.mfa_token;
+        this.showMfaChallenge();
+        return;
+      }
       API.token = data.access_token;
       API.refreshToken = data.refresh_token;
       this.user = data.user;
@@ -932,13 +937,13 @@ const App = {
     const ptT = { dashboard:'Dashboard', leads:'CRM / Leads', clients:'Clientes', projects:'Projetos',
       kanban:'Kanban', services:'Ordem de serviço', contracts:'Contratos',
       finance:'Financeiro', calendar:'Calendário', reports:'Relatórios',
-      activity:'Logs', team:'Equipe', settings:'Configurações', integracoes:'Integrações', systems:'Sistemas', plans:'Planos', chat:'Assistente AI', permissions:'Permissões', developments:'Empreendimentos', slides:'Slides', landing:'Landing Page', design:'Painel Criativo', notes:'Notas', calculator:'Calculadora', spotify:'Spotify', festefe:'Chamado Festefe' };
+      activity:'Logs', team:'Equipe', settings:'Configurações', integracoes:'Integrações', systems:'Sistemas', plans:'Planos', chat:'Assistente AI', permissions:'Permissões', developments:'Empreendimentos', slides:'Slides', landing:'Landing Page', design:'Painel Criativo', notes:'Notas', calculator:'Calculadora', spotify:'Spotify', festefe:'Chamado Festefe', security:'Segurança', super_admin:'Super Admin' };
     const titles = this.lang === 'en' ? enT : ptT;
     const icons = {
       dashboard:'fa-chart-pie', leads:'fa-funnel-dollar', clients:'fa-users', projects:'fa-tasks',
       kanban:'fa-columns',       services:'fa-clipboard-list', contracts:'fa-file-signature', marketing:'fa-ad',
       finance:'fa-dollar-sign', calendar:'fa-calendar', reports:'fa-chart-bar',
-      activity:'fa-history', team:'fa-user-friends', settings:'fa-cog', integracoes:'fa-plug', systems:'fa-globe', plans:'fa-box', chat:'fa-robot', permissions:'fa-shield-alt', developments:'fa-building', slides:'fa-images', landing:'fa-palette', design:'fa-paint-brush', notes:'fa-sticky-note', calculator:'fa-calculator', spotify:'fa-spotify', festefe:'fa-ticket-alt'
+      activity:'fa-history', team:'fa-user-friends', settings:'fa-cog', integracoes:'fa-plug', systems:'fa-globe', plans:'fa-box', chat:'fa-robot', permissions:'fa-shield-alt', developments:'fa-building', slides:'fa-images', landing:'fa-palette', design:'fa-paint-brush', notes:'fa-sticky-note', calculator:'fa-calculator', spotify:'fa-spotify', festefe:'fa-ticket-alt', security:'fa-shield-alt', super_admin:'fa-user-shield'
     };
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.innerHTML = `<i class="fas ${icons[page] || 'fa-circle'}"></i> ${titles[page] || page}`;
@@ -969,6 +974,8 @@ const App = {
       case 'developments': this.renderDevelopments(); break;
       case 'slides': this.renderSlides(); break;
       case 'landing': this.renderLanding(); break;
+      case 'security': this.renderSecurity(); break;
+      case 'super_admin': this.renderSuperAdmin(); break;
       case 'calculator': this.renderCalculator(); break;
       case 'spotify': this.renderSpotify(); break;
     }
@@ -6497,6 +6504,270 @@ const App = {
 
   _updateTrackInfo(name) {
     document.getElementById('musicTrackInfo').textContent = name || 'Nenhuma faixa';
+  },
+
+  // ─── MFA Challenge ───────────────────────
+
+  _mfaToken: '',
+
+  showMfaChallenge() {
+    const html =
+      '<div style="max-width:400px;margin:auto;padding:32px;text-align:center">' +
+      '<i class="fas fa-shield-alt" style="font-size:48px;color:var(--primary);margin-bottom:16px"></i>' +
+      '<h3>Autenticacao em Duas Etapas</h3>' +
+      '<p style="color:var(--text-muted);margin-bottom:20px">Digite o codigo do seu aplicativo autenticador</p>' +
+      '<div style="margin-bottom:16px">' +
+      '<input id="mfaCodeInput" type="text" maxlength="6" placeholder="000000" style="font-size:28px;letter-spacing:8px;text-align:center;width:200px;padding:12px;border-radius:8px;border:2px solid var(--border);background:var(--surface);color:var(--text)"/>' +
+      '</div>' +
+      '<button id="mfaVerifyBtn" class="btn btn-primary" style="width:100%;padding:12px">Verificar</button>' +
+      '<p id="mfaError" style="color:var(--danger);margin-top:12px;display:none"></p>' +
+      '<p style="margin-top:24px;font-size:12px;color:var(--text-muted)">Use seu Google Authenticator ou similar</p>' +
+      '</div>';
+    this.temporaryModal(html);
+    setTimeout(() => document.getElementById('mfaCodeInput')?.focus(), 100);
+    document.getElementById('mfaVerifyBtn').addEventListener('click', async () => {
+      const code = document.getElementById('mfaCodeInput').value.trim();
+      if (!code) return;
+      const data = await API.post('/api/auth/mfa/challenge', { mfa_token: this._mfaToken, code });
+      if (data && !data.error) {
+        document.getElementById('modalOverlay').click();
+        API.token = data.access_token;
+        API.refreshToken = data.refresh_token;
+        this.user = data.user;
+        localStorage.setItem('promake_access_token', API.token);
+        localStorage.setItem('promake_refresh_token', API.refreshToken);
+        this.showApp();
+      } else {
+        document.getElementById('mfaError').textContent = data?.error || 'Codigo invalido';
+        document.getElementById('mfaError').style.display = 'block';
+      }
+    });
+    document.getElementById('mfaCodeInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('mfaVerifyBtn').click();
+    });
+  },
+
+  // ─── Security Page (MFA Setup) ────────────
+
+  async renderSecurity() {
+    const content = document.getElementById('app-content');
+    const mfaStatus = await API.get('/api/auth/mfa/status');
+    const rolesData = await API.get('/api/auth/roles');
+    const mfaEnabled = mfaStatus?.mfa_enabled || false;
+    const backupCount = mfaStatus?.backup_codes_left || 0;
+    let mfaSectionHtml = '';
+    if (!mfaEnabled) {
+      mfaSectionHtml =
+        '<div class="card" style="padding:24px;margin-bottom:16px">' +
+        '<h4><i class="fas fa-shield-alt"></i> Autenticacao em Duas Etapas (MFA)</h4>' +
+        '<p style="color:var(--text-muted);margin:12px 0">Adicione uma camada extra de seguranca com Google Authenticator</p>' +
+        '<button id="mfaSetupBtn" class="btn btn-primary"><i class="fas fa-qrcode"></i> Configurar MFA</button>' +
+        '<div id="mfaSetupArea" style="display:none;margin-top:20px;text-align:center"></div>' +
+        '</div>';
+    } else {
+      mfaSectionHtml =
+        '<div class="card" style="padding:24px;margin-bottom:16px">' +
+        '<h4><i class="fas fa-shield-alt"></i> Autenticacao em Duas Etapas</h4>' +
+        '<p style="color:var(--success);margin:8px 0"><i class="fas fa-check-circle"></i> MFA esta ativo</p>' +
+        '<p style="color:var(--text-muted);font-size:13px">Codigos de recuperacao restantes: ' + backupCount + '</p>' +
+        '<div style="margin-top:12px;display:flex;gap:8px">' +
+        '<button id="mfaDisableBtn" class="btn btn-danger"><i class="fas fa-times"></i> Desativar MFA</button>' +
+        '<button id="mfaNewCodesBtn" class="btn btn-secondary"><i class="fas fa-redo"></i> Gerar novos codigos</button>' +
+        '</div>' +
+        '</div>';
+    }
+    let rolesHtml = '';
+    if (rolesData) {
+      rolesHtml = '<div class="card" style="padding:24px;margin-bottom:16px">' +
+        '<h4><i class="fas fa-user-tag"></i> Minhas Permissoes (RBAC)</h4>' +
+        '<p style="color:var(--text-muted);margin:8px 0">Role atual: <strong>' + (rolesData.current_role || 'N/A') + '</strong></p>' +
+        '<table style="width:100%;margin-top:12px;border-collapse:collapse"><tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Modulo</th><th style="text-align:center;padding:8px;border-bottom:1px solid var(--border)">Permissao</th></tr>';
+      const myPerms = rolesData.roles?.find(r => r.id === rolesData.current_role);
+      if (myPerms && myPerms.modules) {
+        const modList = typeof myPerms.modules === 'object' ? myPerms.modules : {};
+        for (const [mod, perm] of Object.entries(modList)) {
+          rolesHtml += '<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border)">' + mod + '</td><td style="text-align:center;padding:6px 8px;border-bottom:1px solid var(--border)"><span class="badge badge-' + (perm === 'admin' ? 'primary' : 'secondary') + '">' + perm + '</span></td></tr>';
+        }
+      }
+      rolesHtml += '</table></div>';
+    }
+    content.innerHTML =
+      '<div style="max-width:800px;margin:auto">' +
+      '<h2><i class="fas fa-shield-alt"></i> Seguranca</h2>' +
+      mfaSectionHtml +
+      rolesHtml +
+      '</div>';
+    if (!mfaEnabled) {
+      document.getElementById('mfaSetupBtn')?.addEventListener('click', async () => {
+        const setup = await API.post('/api/auth/mfa/setup', {});
+        if (setup && !setup.error) {
+          const area = document.getElementById('mfaSetupArea');
+          area.style.display = 'block';
+          area.innerHTML =
+            '<p style="margin-bottom:12px">Escaneie o QR Code com seu Google Authenticator:</p>' +
+            '<img src="data:image/png;base64,' + setup.qrcode + '" style="width:200px;height:200px;border-radius:8px;margin-bottom:16px"/>' +
+            '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Ou digite a chave manualmente: <code style="background:var(--surface);padding:4px 8px;border-radius:4px;font-size:11px">' + setup.secret + '</code></p>' +
+            '<div style="margin-bottom:12px">' +
+            '<input id="mfaVerifyCode" type="text" maxlength="6" placeholder="000000" style="font-size:24px;letter-spacing:6px;text-align:center;width:160px;padding:8px;border-radius:8px;border:2px solid var(--border);background:var(--surface);color:var(--text)"/>' +
+            '</div>' +
+            '<button id="mfaConfirmBtn" class="btn btn-success">Confirmar e Ativar</button>' +
+            '<p id="mfaSetupError" style="color:var(--danger);margin-top:8px;display:none"></p>' +
+            '<div style="margin-top:16px;padding:12px;background:var(--surface);border-radius:8px">' +
+            '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px"><strong>Codigos de Recuperacao:</strong></p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' +
+            setup.recovery_codes.map(c => '<code style="background:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px;text-align:center;font-family:monospace">' + c + '</code>').join('') +
+            '</div>' +
+            '<p style="font-size:11px;color:var(--warning);margin-top:8px"><i class="fas fa-exclamation-triangle"></i> Guarde esses codigos em local seguro. Cada codigo pode ser usado apenas uma vez.</p>' +
+            '</div>';
+          document.getElementById('mfaConfirmBtn')?.addEventListener('click', async () => {
+            const code = document.getElementById('mfaVerifyCode').value.trim();
+            if (!code) return;
+            const result = await API.post('/api/auth/mfa/verify', { code });
+            if (result && !result.error) {
+              this.toast('MFA ativado com sucesso!', 'success');
+              this.renderSecurity();
+            } else {
+              document.getElementById('mfaSetupError').textContent = result?.error || 'Codigo invalido';
+              document.getElementById('mfaSetupError').style.display = 'block';
+            }
+          });
+        }
+      });
+    } else {
+      document.getElementById('mfaDisableBtn')?.addEventListener('click', async () => {
+        if (!confirm('Desativar MFA?')) return;
+        const result = await API.post('/api/auth/mfa/disable', {});
+        if (result && !result.error) {
+          this.toast('MFA desativado', 'info');
+          this.renderSecurity();
+        }
+      });
+      document.getElementById('mfaNewCodesBtn')?.addEventListener('click', async () => {
+        const result = await API.post('/api/auth/mfa/recovery-codes', {});
+        if (result && !result.error) {
+          const codesHtml =
+            '<div style="text-align:center;padding:16px">' +
+            '<h4>Novos Codigos de Recuperacao</h4>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:16px 0">' +
+            result.recovery_codes.map(c => '<code style="background:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px">' + c + '</code>').join('') +
+            '</div>' +
+            '<p style="font-size:12px;color:var(--warning)">Guardar em local seguro</p>' +
+            '</div>';
+          this.temporaryModal(codesHtml);
+        }
+      });
+    }
+  },
+
+  // ─── Super Admin Page ─────────────────────
+
+  async renderSuperAdmin() {
+    const content = document.getElementById('app-content');
+    content.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin" style="font-size:32px"></i><p>Carregando...</p></div>';
+    const summary = await API.get('/api/super-admin/security-summary');
+    const auditData = await API.get('/api/super-admin/audit-log?per_page=20');
+    const eventsData = await API.get('/api/super-admin/security-events');
+    const sessionsData = await API.get('/api/super-admin/active-sessions');
+    const usersData = await API.get('/api/super-admin/users');
+    if (!summary) {
+      content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)"><i class="fas fa-exclamation-triangle" style="font-size:32px"></i><p>Sem acesso ao Super Admin</p></div>';
+      return;
+    }
+    let html =
+      '<div style="max-width:1200px;margin:auto">' +
+      '<h2><i class="fas fa-user-shield"></i> Super Admin - Monitoramento</h2>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0">' +
+      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--primary)">' + (summary.total_users||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Usuarios</div></div>' +
+      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--success)">' + (summary.active_today||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Ativos Hoje</div></div>' +
+      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--danger)">' + (summary.failed_logins_24h||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Falhas Login (24h)</div></div>' +
+      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--warning)">' + (summary.mfa_enabled||0) + '</div><div style="font-size:12px;color:var(--text-muted)">MFA Ativo</div></div>' +
+      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700">' + (summary.active_refresh_tokens||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Sessoes Ativas</div></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+
+      '<!-- Block IP -->' +
+      '<div class="card" style="padding:16px">' +
+      '<h4><i class="fas fa-ban"></i> Bloquear IP</h4>' +
+      '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<input id="blockIpInput" type="text" placeholder="192.168.1.1" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)"/>' +
+      '<button id="blockIpBtn" class="btn btn-danger"><i class="fas fa-lock"></i> Bloquear</button>' +
+      '</div>' +
+      '<p id="blockIpStatus" style="font-size:12px;color:var(--text-muted);margin-top:8px"></p>' +
+      '</div>' +
+
+      '<!-- Security Events -->' +
+      '<div class="card" style="padding:16px">' +
+      '<h4><i class="fas fa-exclamation-triangle"></i> Eventos de Seguranca</h4>' +
+      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
+    if (eventsData?.rows?.length) {
+      html += eventsData.rows.slice(0,10).map(e =>
+        '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+        '<span style="color:var(--danger)">' + (e.event_type||'') + '</span>' +
+        '<span style="color:var(--text-muted)">' + (e.ip_address||'') + '</span>' +
+        '<span style="color:var(--text-muted);font-size:11px">' + (e.timestamp||'').slice(0,16) + '</span>' +
+        '</div>'
+      ).join('');
+    } else {
+      html += '<p style="color:var(--text-muted);font-size:13px">Nenhum evento</p>';
+    }
+    html += '</div></div>' +
+
+      '<!-- Active Users -->' +
+      '<div class="card" style="padding:16px">' +
+      '<h4><i class="fas fa-users"></i> Usuarios</h4>' +
+      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">' +
+      '<table style="width:100%;font-size:12px"><tr><th>Nome</th><th>Role</th><th>MFA</th><th>Acoes</th></tr>';
+    if (usersData?.rows?.length) {
+      html += usersData.rows.map(u =>
+        '<tr><td style="padding:4px">' + (u.name||'') + '</td><td>' + (u.role||'') + '</td><td>' + (u.mfa_enabled ? '<span style="color:var(--success)"><i class="fas fa-check"></i></span>' : '<span style="color:var(--text-muted)"><i class="fas fa-times"></i></span>') + '</td><td>' + (u.action_count||0) + ' acoes</td></tr>'
+      ).join('');
+    }
+    html += '</table></div></div>' +
+
+      '<!-- Active Sessions -->' +
+      '<div class="card" style="padding:16px">' +
+      '<h4><i class="fas fa-key"></i> Sessoes Ativas</h4>' +
+      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
+    if (sessionsData?.rows?.length) {
+      html += '<table style="width:100%;font-size:12px"><tr><th>Usuario</th><th>Expira</th><th>Acao</th></tr>';
+      html += sessionsData.rows.slice(0,10).map(s =>
+        '<tr><td style="padding:4px">' + (s.name||'') + '</td><td>' + (s.expires_at||'').slice(0,16) + '</td><td><button class="btn btn-xs btn-danger revoke-session" data-token="' + s.token + '"><i class="fas fa-times"></i></button></td></tr>'
+      ).join('');
+      html += '</table>';
+    } else {
+      html += '<p style="color:var(--text-muted);font-size:13px">Nenhuma sessao ativa</p>';
+    }
+    html += '</div></div>' +
+      '</div>' +
+
+      '<!-- Audit Log -->' +
+      '<div class="card" style="padding:16px;margin-top:16px">' +
+      '<h4><i class="fas fa-history"></i> Auditoria Recente</h4>' +
+      '<div style="max-height:300px;overflow-y:auto;margin-top:8px">';
+    if (auditData?.rows?.length) {
+      html += '<table style="width:100%;font-size:12px"><tr><th>Data</th><th>Usuario</th><th>Acao</th><th>Entidade</th><th>IP</th></tr>';
+      html += auditData.rows.map(a =>
+        '<tr><td style="padding:4px;white-space:nowrap">' + (a.timestamp||'').slice(0,16) + '</td><td>' + (a.user_name||'') + '</td><td>' + (a.action||'') + '</td><td>' + (a.entity_type||'') + ' #' + (a.entity_id||'') + '</td><td style="font-size:11px">' + (a.ip_address||'') + '</td></tr>'
+      ).join('');
+      html += '</table>';
+    }
+    html += '</div></div>' +
+      '</div>';
+    content.innerHTML = html;
+    document.getElementById('blockIpBtn')?.addEventListener('click', async () => {
+      const ip = document.getElementById('blockIpInput').value.trim();
+      if (!ip) return;
+      const result = await API.post('/api/super-admin/block-ip', { ip, hours: 24 });
+      document.getElementById('blockIpStatus').textContent = result?.message || 'Erro ao bloquear';
+    });
+    document.querySelectorAll('.revoke-session').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const token = btn.dataset.token;
+        await API.post('/api/super-admin/revoke-session', { token });
+        this.toast('Sessao revogada', 'info');
+        this.renderSuperAdmin();
+      });
+    });
   },
 };
 

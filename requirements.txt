@@ -4,3 +4,5 @@ gunicorn>=20.0
 fpdf2>=2.5
 pyjwt>=2.0
 bcrypt>=4.0
+pyotp>=2.0
+qrcode[pil]>=8.0
