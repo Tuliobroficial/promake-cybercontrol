@@ -4418,6 +4418,50 @@ def api_seed_design():
         db.rollback()
         return jsonify({"error": str(e)}), 500
 
+# ─── Restore data from local backup ──────────
+
+@app.route("/api/admin/restore-data", methods=["POST"])
+@require_auth
+@require_role("admin")
+def api_restore_data():
+    data = request.get_json() or {}
+    db = get_db()
+    results = {"restored": {}, "errors": []}
+    try:
+        order = ["plans","clients","projects","users","leads","contracts","service_orders","tasks","calendar_events","transactions","client_plans","landing_config"]
+        for table in order:
+            rows = data.get(table, [])
+            if not rows:
+                continue
+            count = 0
+            for row in rows:
+                try:
+                    # Get column names from the row dict
+                    cols = [k for k in row.keys() if k not in ("id",)]
+                    if not cols:
+                        continue
+                    placeholders = ",".join("?" for _ in cols)
+                    colnames = ",".join(cols)
+                    values = [row.get(c) for c in cols]
+                    # Check if row exists with same unique fields
+                    existing = None
+                    if table == "landing_config" and "section" in row and "key" in row:
+                        existing = db.execute("SELECT 1 FROM landing_config WHERE section=? AND key=?", (row["section"], row["key"])).fetchone()
+                    elif table in ("plans", "tasks") and "id" in row:
+                        existing = db.execute(f"SELECT 1 FROM {table} WHERE id=?", (row["id"],)).fetchone()
+                    if not existing:
+                        db.execute(f"INSERT INTO {table} ({colnames}) VALUES ({placeholders})", values)
+                        count += 1
+                except Exception as erow:
+                    results["errors"].append(f"{table}: {str(erow)[:100]}")
+            if count:
+                db.commit()
+                results["restored"][table] = count
+        return jsonify(results)
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+
 # ─── Init ────────────────────────────────────
 
 init_db()
