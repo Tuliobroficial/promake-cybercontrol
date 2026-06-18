@@ -1,9 +1,13 @@
-import json, os, sys, time, re, hashlib, hmac, threading
+import json, os, sys, time, re, hashlib, hmac, threading, smtplib, random, string
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from functools import wraps
 from uuid import uuid4
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import urllib.request, urllib.parse, urllib.error
+import bcrypt
+import jwt
 
 BASE_DIR = Path(__file__).parent.parent
 BACKEND_DIR = Path(__file__).parent
@@ -20,6 +24,11 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "promake-secret-change-in-production")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "promake-jwt-secret-change-in-production")
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRES_MINUTES = 15
+REFRESH_TOKEN_EXPIRES_DAYS = 30
 
 _RATE_LIMIT = {}
 _RATE_LIMIT_WINDOW = 60
@@ -476,6 +485,31 @@ def init_db():
         message TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id),
+        token TEXT UNIQUE NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE TABLE IF NOT EXISTS email_verifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        code TEXT NOT NULL,
+        type TEXT DEFAULT 'signup',
+        expires_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id),
+        token TEXT UNIQUE NOT NULL,
+        expires_at TEXT NOT NULL,
+        revoked INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
     """)
     # Migration: add locked/x/y columns to design_stages if missing
     for col in ["locked INTEGER DEFAULT 0", "x REAL DEFAULT 0", "y REAL DEFAULT 0"]:
@@ -544,13 +578,12 @@ def init_db():
     # Seed admin user if not exists
     cur = db.execute("SELECT id FROM users WHERE email='admin@promake.com'")
     if not cur.fetchone():
-        pw = hashlib.sha256("admin123".encode()).hexdigest()
         db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Administrador","admin@promake.com",pw,"admin"))
+                   ("Administrador","admin@promake.com",hash_password("admin123"),"admin"))
         db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Maria Silva","maria@promake.com",hashlib.sha256("maria123".encode()).hexdigest(),"manager"))
+                   ("Maria Silva","maria@promake.com",hash_password("maria123"),"manager"))
         db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Joao Designer","joao@promake.com",hashlib.sha256("joao123".encode()).hexdigest(),"designer"))
+                   ("Joao Designer","joao@promake.com",hash_password("joao123"),"designer"))
     # Seed sample data if empty
     if not db.execute("SELECT id FROM clients").fetchone():
         db.executescript("""
@@ -617,10 +650,66 @@ def init_db():
 # ─── Helpers ────────────────────────────────
 
 def hash_password(pw):
-    return hashlib.sha256(pw.encode()).hexdigest()
+    return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
+
+def check_password(password, password_hash):
+    if password_hash.startswith("$2"):
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    return hashlib.sha256(password.encode()).hexdigest() == password_hash
+
+def create_access_token(user_id, user_role):
+    payload = {
+        "sub": user_id,
+        "role": user_role,
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRES_MINUTES),
+        "type": "access"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def create_refresh_token(user_id):
+    token = uuid4().hex
+    expires_at = (datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRES_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+    db = get_db()
+    db.execute(
+        "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?,?,?)",
+        (user_id, token, expires_at)
+    )
+    db.commit()
+    return token
+
+def verify_access_token(token):
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
 
 def generate_token():
     return uuid4().hex
+
+def generate_code():
+    return ''.join(random.choices(string.digits, k=6))
+
+def send_email(to_email, subject, body_html):
+    config = load_config()
+    smtp = config.get("smtp", {})
+    if not smtp.get("host") or not smtp.get("user") or not smtp.get("password"):
+        return False
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = smtp.get("from_email", smtp["user"])
+    msg["To"] = to_email
+    msg.attach(MIMEText(body_html, "html"))
+    try:
+        server = smtplib.SMTP(smtp["host"], int(smtp.get("port", 587)))
+        server.starttls()
+        server.login(smtp["user"], smtp["password"])
+        server.sendmail(msg["From"], [to_email], msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
 def row_to_dict(row):
     if row is None: return None
@@ -648,13 +737,17 @@ def get_setting(*keys, default=None):
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get("Authorization", "").replace("Bearer ","")
+        auth = request.headers.get("Authorization", "")
+        token = auth.replace("Bearer ","")
         if not token:
             return jsonify({"error": "Nao autorizado"}), 401
+        payload = verify_access_token(token)
+        if not payload:
+            return jsonify({"error": "Token invalido ou expirado"}), 401
         db = get_db()
         user = db.execute(
             "SELECT * FROM users WHERE id=? AND active=1",
-            (int(token) if token.isdigit() else 0,)
+            (payload["sub"],)
         ).fetchone()
         if not user:
             return jsonify({"error": "Nao autorizado"}), 401
@@ -736,10 +829,131 @@ def api_login():
     password = data.get("password", "")
     db = get_db()
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
-    if not user or user["password_hash"] != hash_password(password):
+    if not user or not check_password(password, user["password_hash"]):
         return jsonify({"error": "Credenciais inválidas"}), 401
+    if not user["password_hash"].startswith("$2"):
+        new_hash = hash_password(password)
+        db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
+        db.commit()
+    access_token = create_access_token(user["id"], user["role"])
+    refresh_token = create_refresh_token(user["id"])
     log_activity("login", "usuario", user["id"], f"Login: {user['email']}")
-    return jsonify({"token": str(user["id"]), "user": row_to_dict(user)})
+    result = {"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)}
+    if user["role"] == "client":
+        system = db.execute(
+            "SELECT s.slug, s.name FROM systems s JOIN clients c ON s.client_id = c.id WHERE c.email=? LIMIT 1",
+            (email,)
+        ).fetchone()
+        if system:
+            result["system"] = {"slug": system["slug"], "name": system["name"], "portal_url": f"/portal/{system['slug']}"}
+    return jsonify(result)
+
+@app.route("/api/auth/refresh", methods=["POST"])
+@rate_limit
+def api_refresh():
+    data = request.get_json() or {}
+    refresh_token = data.get("refresh_token", "")
+    if not refresh_token:
+        return jsonify({"error": "refresh_token obrigatorio"}), 400
+    db = get_db()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    row = db.execute(
+        "SELECT * FROM refresh_tokens WHERE token=? AND revoked=0 AND expires_at>?",
+        (refresh_token, now)
+    ).fetchone()
+    if not row:
+        return jsonify({"error": "Refresh token invalido ou expirado"}), 401
+    user = db.execute("SELECT * FROM users WHERE id=? AND active=1", (row["user_id"],)).fetchone()
+    if not user:
+        return jsonify({"error": "Usuario nao encontrado"}), 401
+    db.execute("UPDATE refresh_tokens SET revoked=1 WHERE id=?", (row["id"],))
+    db.commit()
+    new_access = create_access_token(user["id"], user["role"])
+    new_refresh = create_refresh_token(user["id"])
+    return jsonify({"access_token": new_access, "refresh_token": new_refresh})
+
+@app.route("/api/auth/logout", methods=["POST"])
+@require_auth
+def api_logout():
+    data = request.get_json() or {}
+    refresh_token = data.get("refresh_token", "")
+    if refresh_token:
+        db = get_db()
+        db.execute("UPDATE refresh_tokens SET revoked=1 WHERE token=?", (refresh_token,))
+        db.commit()
+    return jsonify({"ok": True, "message": "Logout realizado"})
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+@rate_limit
+def api_forgot_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email obrigatorio"}), 400
+    db = get_db()
+    user = db.execute("SELECT id, name, email FROM users WHERE email=? AND active=1", (email,)).fetchone()
+    if not user:
+        return jsonify({"error": "Email nao encontrado"}), 404
+    token = generate_token()
+    expires_at = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    db.execute(
+        "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?,?,?)",
+        (user["id"], token, expires_at)
+    )
+    db.commit()
+    log_activity("solicitou", "recuperar_senha", user["id"], f"Token gerado para: {user['email']}")
+
+    base_url = request.host_url.rstrip("/")
+    reset_link = f"{base_url}/?reset_token={token}"
+    subject = "Recuperacao de Senha - Promake"
+    body_html = f"""<html><body style="font-family:Arial,sans-serif;background:#0F0F1A;padding:40px">
+<div style="max-width:560px;margin:auto;background:#1A1A2E;border-radius:12px;padding:40px;border:1px solid #2A2A45">
+<div style="text-align:center;margin-bottom:24px">
+<div style="font-size:48px;color:#6C5CE7;margin-bottom:8px">&#x1F451;</div>
+<h1 style="color:#E0E0E0;font-size:24px;margin:0">Promake Ecosystem</h1>
+</div>
+<h2 style="color:#E0E0E0;font-size:20px;margin-bottom:16px">Recuperacao de Senha</h2>
+<p style="color:#8888AA;font-size:14px;line-height:1.6">Ola, <strong style="color:#E0E0E0">{user['name']}</strong>!</p>
+<p style="color:#8888AA;font-size:14px;line-height:1.6">Recebemos uma solicitacao de redefinicao de senha para sua conta no Promake.</p>
+<p style="color:#8888AA;font-size:14px;line-height:1.6">Clique no botao abaixo para criar uma nova senha (valido por 1 hora):</p>
+<div style="text-align:center;margin:28px 0">
+<a href="{reset_link}" style="display:inline-block;padding:14px 32px;background:#6C5CE7;color:#fff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600">Redefinir Senha</a>
+</div>
+<p style="color:#8888AA;font-size:13px;line-height:1.6">Se voce nao solicitou esta alteracao, ignore este email. Sua senha permanecera a mesma.</p>
+<p style="color:#8888AA;font-size:13px;line-height:1.6;margin-top:20px;padding-top:16px;border-top:1px solid #2A2A45">Atenciosamente,<br><strong style="color:#E0E0E0">Equipe Promake</strong></p>
+</div></body></html>"""
+    sent = send_email(user["email"], subject, body_html)
+    if sent:
+        return jsonify({"ok": True, "message": "Email de recuperacao enviado para " + user["email"]})
+    smtp_config = load_config().get("smtp", {})
+    if smtp_config.get("host"):
+        return jsonify({"error": "Erro ao enviar email. Verifique as configuracoes de SMTP."}), 500
+    return jsonify({"ok": True, "message": "Token de recuperacao gerado (modo desenvolvimento)", "token": token, "email": user["email"], "dev_mode": True})
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+@rate_limit
+def api_reset_password():
+    data = request.get_json() or {}
+    token = data.get("token", "").strip()
+    new_password = data.get("password", "")
+    if not token or not new_password:
+        return jsonify({"error": "Token e nova senha obrigatorios"}), 400
+    if len(new_password) < 6:
+        return jsonify({"error": "Senha deve ter no minimo 6 caracteres"}), 400
+    db = get_db()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    reset = db.execute(
+        "SELECT * FROM password_resets WHERE token=? AND used=0 AND expires_at>?",
+        (token, now)
+    ).fetchone()
+    if not reset:
+        return jsonify({"error": "Token invalido ou expirado"}), 400
+    user_id = reset["user_id"]
+    db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(new_password), user_id))
+    db.execute("UPDATE password_resets SET used=1 WHERE id=?", (reset["id"],))
+    db.commit()
+    log_activity("alterou", "senha", user_id, "Senha redefinida via token")
+    return jsonify({"ok": True, "message": "Senha redefinida com sucesso"})
 
 @app.route("/api/auth/profile")
 @require_auth
@@ -771,6 +985,232 @@ def api_register_user():
     log_activity("criou", "usuario", uid, f"Usuario: {name}")
     create_notification("success", "Novo Membro", f"Membro {name} cadastrado como {role}.", "/team")
     return jsonify({"ok": True, "message": "Usuario cadastrado"})
+
+def _generate_slug(text):
+    slug = re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
+    if not slug:
+        slug = "cliente"
+    db = get_db()
+    existing = db.execute("SELECT id FROM systems WHERE slug=?", (slug,)).fetchone()
+    if not existing:
+        return slug
+    for _ in range(100):
+        suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+        candidate = f"{slug}-{suffix}"
+        if not db.execute("SELECT id FROM systems WHERE slug=?", (candidate,)).fetchone():
+            return candidate
+    return slug + "-" + str(int(time.time()))
+
+@app.route("/api/auth/send-verification", methods=["POST"])
+@rate_limit
+def api_send_verification():
+    try:
+        data = request.get_json() or {}
+        email = data.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "Email obrigatorio"}), 400
+        db = get_db()
+        if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+            return jsonify({"error": "Email ja cadastrado"}), 400
+        code = generate_code()
+        expires_at = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
+                       (email, code, "signup", expires_at))
+        except Exception:
+            db.execute("""CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                type TEXT DEFAULT 'signup',
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )""")
+            db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
+                       (email, code, "signup", expires_at))
+        db.commit()
+        subject = "Codigo de Verificacao - Promake"
+        body_html = f"""\
+<html><body style="font-family:Arial,sans-serif;padding:20px">
+<h2 style="color:#6c5ce7">Verificacao de Email</h2>
+<p>Seu codigo de verificacao e:</p>
+<h1 style="font-size:32px;letter-spacing:4px;color:#6c5ce7;text-align:center;padding:16px;background:#f0edfe;border-radius:8px">{code}</h1>
+<p>Este codigo expira em 10 minutos.</p>
+<p style="color:#999;font-size:12px">Promake - Sistema de Gestao</p>
+</body></html>"""
+        sent = send_email(email, subject, body_html)
+        if sent:
+            return jsonify({"ok": True, "message": "Codigo enviado para " + email})
+        return jsonify({"ok": True, "message": "Codigo gerado (modo desenvolvimento)", "code": code, "dev_mode": True})
+    except Exception as e:
+        return jsonify({"error": "Erro interno: " + str(e)}), 500
+
+@app.route("/api/auth/signup", methods=["POST"])
+@rate_limit
+def api_signup():
+    try:
+        data = request.get_json() or {}
+        name = data.get("name", "").strip()
+        email = data.get("email", "").strip().lower()
+        password = data.get("password", "")
+        company = data.get("company", "").strip()
+        code = data.get("code", "").strip()
+        if not name or not email or not password:
+            return jsonify({"error": "Nome, email e senha obrigatorios"}), 400
+        if len(password) < 6:
+            return jsonify({"error": "Senha deve ter no minimo 6 caracteres"}), 400
+        if not code:
+            return jsonify({"error": "Codigo de verificacao obrigatorio"}), 400
+        db = get_db()
+        if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+            return jsonify({"error": "Email ja cadastrado"}), 400
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            ver = db.execute(
+                "SELECT id FROM email_verifications WHERE email=? AND code=? AND type='signup' AND used=0 AND expires_at>?",
+                (email, code, now)
+            ).fetchone()
+        except Exception:
+            db.execute("""CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                type TEXT DEFAULT 'signup',
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )""")
+            ver = db.execute(
+                "SELECT id FROM email_verifications WHERE email=? AND code=? AND type='signup' AND used=0 AND expires_at>?",
+                (email, code, now)
+            ).fetchone()
+        if not ver:
+            return jsonify({"error": "Codigo de verificacao invalido ou expirado"}), 400
+        db.execute("UPDATE email_verifications SET used=1 WHERE id=?", (ver["id"],))
+        client_name = company or name
+        slug = _generate_slug(client_name)
+        portal_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
+                   (name, email, hash_password(password), "client"))
+        uid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        db.execute("INSERT INTO clients (name,email,status,created_by) VALUES (?,?,'active',?)",
+                   (client_name, email, uid))
+        cid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        db.execute("""INSERT INTO systems (client_id, name, slug, portal_password_hash, active, created_by)
+                      VALUES (?,?,?,?,1,?)""",
+                   (cid, client_name, slug, hash_password(portal_password), uid))
+        sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        for mk in ("dashboard","projects","service_orders","finance","calendar","files","developments"):
+            db.execute("INSERT INTO system_modules (system_id, module_key, enabled) VALUES (?,?,1)", (sid, mk))
+        db.commit()
+        log_activity("cadastrou", "cliente", cid, f"Cliente: {client_name}")
+        create_notification("success", "Novo Cliente", f"Cliente {client_name} se cadastrou no sistema.")
+        return jsonify({
+            "ok": True,
+            "message": "Conta criada com sucesso!",
+            "user_id": uid,
+            "client_id": cid,
+            "system_id": sid,
+            "slug": slug,
+            "portal_url": f"/portal/{slug}",
+            "portal_password": portal_password
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": "Erro ao criar conta: " + str(e)}), 500
+
+@app.route("/api/auth/send-reset-code", methods=["POST"])
+@rate_limit
+def api_send_reset_code():
+    try:
+        data = request.get_json() or {}
+        email = data.get("email", "").strip().lower()
+        if not email:
+            return jsonify({"error": "Email obrigatorio"}), 400
+        db = get_db()
+        user = db.execute("SELECT id, name, email FROM users WHERE email=? AND active=1", (email,)).fetchone()
+        if not user:
+            return jsonify({"error": "Email nao encontrado"}), 404
+        code = generate_code()
+        expires_at = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
+                       (email, code, "forgot", expires_at))
+        except Exception:
+            db.execute("""CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                type TEXT DEFAULT 'signup',
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )""")
+            db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
+                       (email, code, "forgot", expires_at))
+        db.commit()
+        subject = "Codigo de Recuperacao - Promake"
+        body_html = f"""\
+<html><body style="font-family:Arial,sans-serif;padding:20px">
+<h2 style="color:#6c5ce7">Recuperacao de Senha</h2>
+<p>Seu codigo para redefinir a senha e:</p>
+<h1 style="font-size:32px;letter-spacing:4px;color:#6c5ce7;text-align:center;padding:16px;background:#f0edfe;border-radius:8px">{code}</h1>
+<p>Este codigo expira em 10 minutos.</p>
+<p style="color:#999;font-size:12px">Promake - Sistema de Gestao</p>
+</body></html>"""
+        sent = send_email(user["email"], subject, body_html)
+        if sent:
+            return jsonify({"ok": True, "message": "Codigo enviado para " + user["email"]})
+        return jsonify({"ok": True, "message": "Codigo gerado (modo desenvolvimento)", "code": code, "dev_mode": True})
+    except Exception as e:
+        return jsonify({"error": "Erro interno: " + str(e)}), 500
+
+@app.route("/api/auth/reset-with-code", methods=["POST"])
+@rate_limit
+def api_reset_with_code():
+    try:
+        data = request.get_json() or {}
+        email = data.get("email", "").strip().lower()
+        code = data.get("code", "").strip()
+        new_password = data.get("password", "")
+        if not email or not code or not new_password:
+            return jsonify({"error": "Email, codigo e nova senha obrigatorios"}), 400
+        if len(new_password) < 6:
+            return jsonify({"error": "Senha deve ter no minimo 6 caracteres"}), 400
+        db = get_db()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            ver = db.execute(
+                "SELECT id FROM email_verifications WHERE email=? AND code=? AND type='forgot' AND used=0 AND expires_at>?",
+                (email, code, now)
+            ).fetchone()
+        except Exception:
+            db.execute("""CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                type TEXT DEFAULT 'signup',
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )""")
+            ver = db.execute(
+                "SELECT id FROM email_verifications WHERE email=? AND code=? AND type='forgot' AND used=0 AND expires_at>?",
+                (email, code, now)
+            ).fetchone()
+        if not ver:
+            return jsonify({"error": "Codigo invalido ou expirado"}), 400
+        db.execute("UPDATE email_verifications SET used=1 WHERE id=?", (ver["id"],))
+        db.execute("UPDATE users SET password_hash=? WHERE email=? AND active=1",
+                   (hash_password(new_password), email))
+        db.commit()
+        user = db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        if user:
+            log_activity("alterou", "senha", user["id"], "Senha redefinida via codigo")
+        return jsonify({"ok": True, "message": "Senha redefinida com sucesso"})
+    except Exception as e:
+        return jsonify({"error": "Erro interno: " + str(e)}), 500
 
 @app.route("/api/team")
 @require_auth
@@ -1048,8 +1488,8 @@ def api_create_system():
         INSERT INTO systems (client_id, name, slug, primary_color, logo_url, portal_password_hash, admin_password_hash, active, created_by)
         VALUES (?,?,?,?,?,?,?,1,?)
     """, (data.get("client_id"), name, slug, data.get("primary_color","#6C5CE7"),
-          data.get("logo_url",""), hashlib.sha256(pw.encode()).hexdigest(),
-          hashlib.sha256(admin_pw.encode()).hexdigest() if admin_pw else "", cur["id"]))
+          data.get("logo_url",""), hash_password(pw) if pw else "",
+          hash_password(admin_pw) if admin_pw else "", cur["id"]))
     db.commit()
     sid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
     for mk in ("dashboard","projects","service_orders","finance","calendar","files","developments"):
@@ -1089,11 +1529,11 @@ def api_update_system(sid):
     pw = data.get("portal_password", "")
     if pw:
         sets.append("portal_password_hash=?")
-        vals.append(hashlib.sha256(pw.encode()).hexdigest())
+        vals.append(hash_password(pw))
     admin_pw = data.get("admin_password", "")
     if admin_pw:
         sets.append("admin_password_hash=?")
-        vals.append(hashlib.sha256(admin_pw.encode()).hexdigest())
+        vals.append(hash_password(admin_pw))
     if sets:
         vals.append(sid)
         db.execute(f"UPDATE systems SET {','.join(sets)} WHERE id=?", vals)
@@ -1148,7 +1588,7 @@ def api_portal_login():
     if not row:
         return jsonify({"error": "Portal nao encontrado"}), 404
     system = dict(row)
-    if hashlib.sha256(password.encode()).hexdigest() != system["portal_password_hash"]:
+    if not check_password(password, system["portal_password_hash"]):
         return jsonify({"error": "Senha incorreta"}), 401
     modules = rows_to_list(db.execute(
         "SELECT module_key, enabled FROM system_modules WHERE system_id=?", (system["id"],)
@@ -1247,7 +1687,7 @@ def api_admin_login():
         return jsonify({"error": "Sistema nao encontrado"}), 404
     system = dict(row)
     admin_hash = system.get("admin_password_hash", "")
-    if not admin_hash or hashlib.sha256(password.encode()).hexdigest() != admin_hash:
+    if not admin_hash or not check_password(password, admin_hash):
         return jsonify({"error": "Senha admin incorreta"}), 401
     return jsonify({"token": slug, "system": {"name": system["name"], "slug": system["slug"], "primary_color": system["primary_color"]}})
 
@@ -3326,6 +3766,52 @@ def api_spotify_config_put():
     log_activity("editou", "config", 0, "Spotify config atualizada")
     return jsonify({"ok": True})
 
+@app.route("/api/smtp/config", methods=["GET"])
+@require_auth
+def api_smtp_config_get():
+    cfg = load_config().get("smtp", {})
+    return jsonify({
+        "host": cfg.get("host", ""),
+        "port": cfg.get("port", 587),
+        "from_email": cfg.get("from_email", ""),
+        "user": cfg.get("user", ""),
+        "password": cfg.get("password", ""),
+    })
+
+@app.route("/api/smtp/config", methods=["PUT"])
+@require_auth
+def api_smtp_config_put():
+    data = request.get_json() or {}
+    smtp = {
+        "host": (data.get("host") or "").strip(),
+        "port": int(data.get("port", 587)),
+        "from_email": (data.get("from_email") or "").strip(),
+        "user": (data.get("user") or "").strip(),
+        "password": (data.get("password") or "").strip(),
+    }
+    if not smtp["host"] or not smtp["user"] or not smtp["password"]:
+        return jsonify({"error": "Host, usuario e senha obrigatorios"}), 400
+    cfg = load_config()
+    cfg["smtp"] = smtp
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    log_activity("editou", "config", 0, "SMTP config atualizada")
+    return jsonify({"ok": True})
+
+@app.route("/api/smtp/test", methods=["POST"])
+@require_auth
+def api_smtp_test():
+    data = request.get_json() or {}
+    to_email = (data.get("to_email") or "").strip()
+    if not to_email:
+        return jsonify({"error": "Email de teste obrigatorio"}), 400
+    subject = "Teste de Configuracao SMTP - Promake"
+    body_html = "<h2>Teste SMTP</h2><p>Se voce recebeu este email, a configuracao SMTP esta funcionando corretamente!</p>"
+    sent = send_email(to_email, subject, body_html)
+    if sent:
+        return jsonify({"ok": True, "message": "Email de teste enviado para " + to_email})
+    return jsonify({"error": "Falha ao enviar email de teste. Verifique as configuracoes."}), 500
+
 @app.route("/api/spotify/auth-url")
 @require_auth
 def api_spotify_auth_url():
@@ -3471,3 +3957,5 @@ if __name__ == "__main__":
     print(f"  API:       http://localhost:{port}/api/dashboard\n")
 
     app.run(host="0.0.0.0", port=port, debug=not is_prod, use_reloader=not is_prod, threaded=True)
+
+

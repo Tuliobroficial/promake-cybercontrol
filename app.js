@@ -1,19 +1,59 @@
 const API = {
-  token: localStorage.getItem('promake_token') || '',
+  token: localStorage.getItem('promake_access_token') || '',
+  refreshToken: localStorage.getItem('promake_refresh_token') || '',
   baseUrl: (window.location.protocol === 'file:') ? 'http://localhost:8081' : window.location.origin,
+  _refreshing: null,
   async request(method, url, body) {
     const fullUrl = this.baseUrl + url;
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (this.token) opts.headers['Authorization'] = 'Bearer ' + this.token;
     if (body) opts.body = JSON.stringify(body);
     try {
-      const res = await fetch(fullUrl, opts);
+      let res = await fetch(fullUrl, opts);
+      if (res.status === 401 && this.refreshToken) {
+        const refreshed = await this._tryRefresh();
+        if (refreshed) {
+          opts.headers['Authorization'] = 'Bearer ' + this.token;
+          res = await fetch(fullUrl, opts);
+        }
+      }
       if (res.status === 401) { App.logout(); return null; }
+      const ct = res.headers.get('content-type') || '';
+      if (ct && !ct.includes('json')) {
+        const text = await res.text();
+        console.error('[API] Non-JSON response', res.status, text.slice(0,200));
+        return null;
+      }
       return await res.json();
     } catch(e) {
+      console.error('[API] Request failed', fullUrl, e);
       App.toast('Erro de conexão com o servidor', 'error');
       return null;
     }
+  },
+  async _tryRefresh() {
+    if (this._refreshing) return this._refreshing;
+    this._refreshing = (async () => {
+      try {
+        const res = await fetch(this.baseUrl + '/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: this.refreshToken })
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        this.token = data.access_token;
+        this.refreshToken = data.refresh_token;
+        localStorage.setItem('promake_access_token', data.access_token);
+        localStorage.setItem('promake_refresh_token', data.refresh_token);
+        return true;
+      } catch(e) {
+        return false;
+      } finally {
+        this._refreshing = null;
+      }
+    })();
+    return this._refreshing;
   },
   get(url) { return this.request('GET', url); },
   post(url, body) { return this.request('POST', url, body); },
@@ -24,7 +64,14 @@ const API = {
     const opts = { method: 'POST', body: formData };
     if (this.token) opts.headers = { 'Authorization': 'Bearer ' + this.token };
     try {
-      const res = await fetch(fullUrl, opts);
+      let res = await fetch(fullUrl, opts);
+      if (res.status === 401 && this.refreshToken) {
+        const refreshed = await this._tryRefresh();
+        if (refreshed) {
+          opts.headers = { 'Authorization': 'Bearer ' + this.token };
+          res = await fetch(fullUrl, opts);
+        }
+      }
       if (res.status === 401) { App.logout(); return null; }
       return await res.json();
     } catch(e) {
@@ -90,9 +137,22 @@ const App = {
   },
 
   async init() {
-    const token = localStorage.getItem('promake_token');
-    if (token) {
-      API.token = token;
+    const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('reset_token');
+    if (resetToken) {
+      this.loadTheme();
+      document.getElementById('lpYear').textContent = new Date().getFullYear();
+      this.loadPublicSlides();
+      this.loadLandingContent();
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => this.openResetPassword(resetToken), 500);
+      return;
+    }
+    const accessToken = localStorage.getItem('promake_access_token');
+    const refreshToken = localStorage.getItem('promake_refresh_token');
+    if (accessToken) {
+      API.token = accessToken;
+      API.refreshToken = refreshToken || '';
       const profile = await API.get('/api/auth/profile');
       if (profile && !profile.error) {
         this.user = profile;
@@ -140,14 +200,320 @@ const App = {
     }
     const data = await API.post('/api/auth/login', { email, password });
     if (data && !data.error) {
-      API.token = data.token;
+      if (data.user?.role === "client" && data.system) {
+        const resultHtml =
+          '<div style="text-align:center;padding:8px 0">' +
+          '<i class="fas fa-external-link-alt" style="font-size:32px;color:var(--primary)""></i>' +
+          '<h4 style="margin:8px 0 4px">Acesso ao Portal</h4>' +
+          '<p style="color:var(--text-muted);font-size:13px">Sua conta e de cliente. Acesse seu portal:</p>' +
+          '<br><a href="' + data.system.portal_url + '" target="_blank" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">' +
+          '<i class="fas fa-rocket"></i> Abrir Portal</a>' +
+          '</div>';
+        this.temporaryModal(resultHtml);
+        localStorage.removeItem('promake_access_token');
+        localStorage.removeItem('promake_refresh_token');
+        return;
+      }
+      API.token = data.access_token;
+      API.refreshToken = data.refresh_token;
       this.user = data.user;
-      localStorage.setItem('promake_token', API.token);
+      localStorage.setItem('promake_access_token', API.token);
+      localStorage.setItem('promake_refresh_token', API.refreshToken);
       this.showApp();
     } else {
       errorEl.textContent = 'Credenciais inv\u00e1lidas.';
       errorEl.classList.add('show');
     }
+  },
+
+  // ── Forgot Password (code-based) ──
+
+  _forgotEmail: '',
+
+  openForgotPassword(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    document.getElementById('forgotStep1').style.display = 'block';
+    document.getElementById('forgotStep2').style.display = 'none';
+    document.getElementById('forgotStep3').style.display = 'none';
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotCode').value = '';
+    document.getElementById('forgotNewPassword').value = '';
+    document.getElementById('forgotConfirmPassword').value = '';
+    document.getElementById('forgotError').style.display = 'none';
+    document.getElementById('forgotResetError').style.display = 'none';
+    this._forgotEmail = '';
+    document.getElementById('loginScreen').classList.remove('show');
+    this.openModal('forgotPasswordModal');
+    setTimeout(() => document.getElementById('forgotEmail')?.focus(), 100);
+  },
+
+  closeForgotPassword() {
+    this.closeModal('forgotPasswordModal');
+    document.getElementById('loginScreen').classList.add('show');
+  },
+
+  async sendResetCode() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const errorEl = document.getElementById('forgotError');
+    if (!email) {
+      errorEl.textContent = 'Digite seu email.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    const data = await API.post('/api/auth/send-reset-code', { email });
+    if (data && !data.error) {
+      this._forgotEmail = email;
+      document.getElementById('forgotCodeEmail').textContent = email;
+      document.getElementById('forgotStep1').style.display = 'none';
+      document.getElementById('forgotStep2').style.display = 'block';
+      document.getElementById('forgotCode').value = '';
+      document.getElementById('forgotResetError').style.display = 'none';
+      if (data.dev_mode) {
+        document.getElementById('forgotCode').value = data.code;
+      }
+      setTimeout(() => document.getElementById('forgotCode')?.focus(), 100);
+    } else {
+      errorEl.textContent = data?.error || 'Email nao encontrado.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  async resetWithCode() {
+    const code = document.getElementById('forgotCode').value.trim();
+    const password = document.getElementById('forgotNewPassword').value;
+    const confirm = document.getElementById('forgotConfirmPassword').value;
+    const errorEl = document.getElementById('forgotResetError');
+    if (!code || code.length !== 6) {
+      errorEl.textContent = 'Digite o codigo de 6 digitos.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (!password || password.length < 6) {
+      errorEl.textContent = 'Senha deve ter no minimo 6 caracteres.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (password !== confirm) {
+      errorEl.textContent = 'Senhas nao conferem.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    const data = await API.post('/api/auth/reset-with-code', { email: this._forgotEmail, code, password });
+    if (data && !data.error) {
+      document.getElementById('forgotStep2').style.display = 'none';
+      document.getElementById('forgotStep3').style.display = 'block';
+      this.toast('Senha redefinida com sucesso!', 'success');
+    } else {
+      errorEl.textContent = data?.error || 'Codigo invalido ou expirado.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  // ── Reset Password (via URL token) ──
+
+  async requestResetToken() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const errorEl = document.getElementById('forgotError');
+    if (!email) {
+      errorEl.textContent = 'Digite seu email.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    const data = await API.post('/api/auth/forgot-password', { email });
+    if (data && !data.error) {
+      document.getElementById('forgotStep1').style.display = 'none';
+      document.getElementById('forgotStep2').style.display = 'block';
+      const msgEl = document.getElementById('forgotSuccessMessage');
+      if (data.dev_mode) {
+        msgEl.innerHTML = 'Modo desenvolvimento: <strong style="color:var(--warning)">' + data.token + '</strong><br><br><a href="#" onclick="App.openResetPassword(\'' + data.token + '\');return false" style="color:var(--primary);font-weight:600">Clique aqui para redefinir</a>';
+      } else {
+        msgEl.textContent = 'Verifique sua caixa de entrada (' + data.email + ') e siga as instrucoes para redefinir sua senha.';
+      }
+    } else {
+      errorEl.textContent = data?.error || 'Email nao encontrado.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  openResetPassword(token) {
+    this._resetToken = token;
+    document.getElementById('resetNewPassword').value = '';
+    document.getElementById('resetConfirmPassword').value = '';
+    document.getElementById('resetError').style.display = 'none';
+    this.closeForgotPassword();
+    this.closeLandingLogin();
+    this.openModal('resetPasswordModal');
+    setTimeout(() => document.getElementById('resetNewPassword')?.focus(), 100);
+  },
+
+  closeResetPassword() {
+    this.closeModal('resetPasswordModal');
+    this._resetToken = null;
+    document.getElementById('loginScreen').classList.add('show');
+  },
+
+  async confirmResetPassword() {
+    const password = document.getElementById('resetNewPassword').value;
+    const confirm = document.getElementById('resetConfirmPassword').value;
+    const errorEl = document.getElementById('resetError');
+    if (!password || password.length < 6) {
+      errorEl.textContent = 'Senha deve ter no minimo 6 caracteres.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (password !== confirm) {
+      errorEl.textContent = 'Senhas nao conferem.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (!this._resetToken) {
+      errorEl.textContent = 'Token invalido. Solicite um novo link.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    const data = await API.post('/api/auth/reset-password', { token: this._resetToken, password });
+    if (data && !data.error) {
+      this.toast('Senha redefinida com sucesso! Faca login com a nova senha.', 'success');
+      this.closeModal('resetPasswordModal');
+      this._resetToken = null;
+      document.getElementById('loginScreen').classList.add('show');
+    } else {
+      errorEl.textContent = data?.error || 'Erro ao redefinir senha. Token pode ter expirado.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  // ── Signup with email verification ──
+
+  _signupData: null,
+  _signupEmail: '',
+
+  openSignup(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    document.getElementById('signupStep1').style.display = 'block';
+    document.getElementById('signupStep2').style.display = 'none';
+    document.getElementById('signupStep3').style.display = 'none';
+    document.getElementById('signupName').value = '';
+    document.getElementById('signupEmail').value = '';
+    document.getElementById('signupCompany').value = '';
+    document.getElementById('signupPassword').value = '';
+    document.getElementById('signupCode').value = '';
+    document.getElementById('signupError').style.display = 'none';
+    document.getElementById('signupCodeError').style.display = 'none';
+    this._signupData = null;
+    this._signupEmail = '';
+    document.getElementById('loginScreen').classList.remove('show');
+    this.openModal('signupModal');
+    setTimeout(() => document.getElementById('signupName')?.focus(), 100);
+  },
+
+  closeSignup() {
+    this.closeModal('signupModal');
+    document.getElementById('loginScreen').classList.add('show');
+  },
+
+  async doSignup() {
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const company = document.getElementById('signupCompany').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const errorEl = document.getElementById('signupError');
+    if (!name || !email || !password) {
+      errorEl.textContent = 'Preencha nome, email e senha.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (password.length < 6) {
+      errorEl.textContent = 'Senha deve ter no minimo 6 caracteres.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    document.getElementById('signupSubmitBtn').disabled = true;
+    document.getElementById('signupSubmitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    const data = await API.post('/api/auth/send-verification', { email });
+    document.getElementById('signupSubmitBtn').disabled = false;
+    document.getElementById('signupSubmitBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Codigo';
+    if (data && !data.error) {
+      this._signupName = name;
+      this._signupEmail = email;
+      this._signupCompany = company;
+      this._signupPassword = password;
+      document.getElementById('signupCodeEmail').textContent = email;
+      document.getElementById('signupStep1').style.display = 'none';
+      document.getElementById('signupStep2').style.display = 'block';
+      document.getElementById('signupCode').value = '';
+      document.getElementById('signupCodeError').style.display = 'none';
+      if (data.dev_mode) {
+        document.getElementById('signupCode').value = data.code;
+      }
+      setTimeout(() => document.getElementById('signupCode')?.focus(), 100);
+    } else {
+      errorEl.textContent = data?.error || 'Erro ao enviar codigo.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  async verifySignup() {
+    const code = document.getElementById('signupCode').value.trim();
+    const errorEl = document.getElementById('signupCodeError');
+    if (!code || code.length !== 6) {
+      errorEl.textContent = 'Digite o codigo de 6 digitos enviado por email.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    errorEl.style.display = 'none';
+    const data = await API.post('/api/auth/signup', {
+      name: this._signupName,
+      email: this._signupEmail,
+      password: this._signupPassword,
+      company: this._signupCompany,
+      code
+    });
+    if (data && !data.error) {
+      this._signupData = data;
+      document.getElementById('signupStep2').style.display = 'none';
+      document.getElementById('signupStep3').style.display = 'block';
+      document.getElementById('signupResult').innerHTML =
+        '<div style="margin-bottom:8px"><strong>Portal:</strong> <a href="' + data.portal_url + '" target="_blank" style="color:var(--primary)">' + data.portal_url + '</a></div>' +
+        '<div style="margin-bottom:8px"><strong>Senha do Portal:</strong> <code style="background:var(--bg-card);padding:2px 8px;border-radius:4px;font-size:14px">' + data.portal_password + '</code> <button class="btn btn-xs btn-outline" onclick="App.copyText(\'' + data.portal_password + '\')" style="vertical-align:middle"><i class="fas fa-copy"></i></button></div>' +
+        '<div style="color:var(--text-muted);font-size:12px">Guarde estas informacoes. Voce precisara da senha do portal para acessar.</div>';
+      this.toast('Conta criada com sucesso!', 'success');
+    } else {
+      errorEl.textContent = data?.error || 'Erro ao criar conta.';
+      errorEl.style.display = 'block';
+    }
+  },
+
+  async resendCode() {
+    if (!this._signupEmail) return;
+    const link = document.getElementById('resendCodeLink');
+    link.textContent = 'Enviando...';
+    const data = await API.post('/api/auth/send-verification', { email: this._signupEmail });
+    link.textContent = 'Reenviar codigo';
+    if (data && !data.error) {
+      if (data.dev_mode) {
+        document.getElementById('signupCode').value = data.code;
+      }
+      this.toast('Codigo reenviado!', 'success');
+    } else {
+      this.toast(data?.error || 'Erro ao reenviar', 'error');
+    }
+  },
+
+  openPortalAfterSignup() {
+    if (this._signupData) {
+      window.open(this._signupData.portal_url, '_blank');
+    }
+  },
+
+  copyText(text) {
+    navigator.clipboard?.writeText(text);
+    this.toast('Copiado!', 'success');
   },
 
   togglePassword() {
@@ -203,10 +569,15 @@ const App = {
   },
 
   logout() {
-    localStorage.removeItem('promake_token');
-    localStorage.removeItem('promake_page');
-    API.token = '';
-    this.user = null;
+      if (API.refreshToken) {
+        API.post('/api/auth/logout', { refresh_token: API.refreshToken });
+      }
+      localStorage.removeItem('promake_access_token');
+      localStorage.removeItem('promake_refresh_token');
+      localStorage.removeItem('promake_page');
+      API.token = '';
+      API.refreshToken = '';
+      this.user = null;
     document.getElementById('app').classList.remove('active');
     document.getElementById('landingPage').classList.remove('hidden');
     document.getElementById('loginScreen').classList.remove('show');
@@ -2542,6 +2913,24 @@ const App = {
           <button class="btn btn-primary btn-sm" onclick="App.saveSpotifyConfig()"><i class="fas fa-check"></i> Salvar</button>
         </div>`;
       this.loadSpotifyConfig();
+    } else if (section === 'email') {
+      content.innerHTML = `<h3><i class="fas fa-envelope"></i> Configuração de Email (SMTP)</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Configure o servidor SMTP para envio de emails de recuperação de senha e notificações.</p>
+        <div class="form-group"><label>Servidor SMTP</label><input type="text" id="sSmtpHost" placeholder="smtp.gmail.com"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Porta</label><input type="number" id="sSmtpPort" placeholder="587" value="587"></div>
+          <div class="form-group"><label>Segurança</label><select id="sSmtpSecurity"><option value="tls">TLS</option><option value="ssl">SSL</option></select></div>
+        </div>
+        <div class="form-group"><label>Email de envio (from)</label><input type="email" id="sSmtpFrom" placeholder="noreply@seudominio.com"></div>
+        <div class="form-group"><label>Usuário</label><input type="text" id="sSmtpUser" placeholder="seu@email.com"></div>
+        <div class="form-group"><label>Senha</label><input type="password" id="sSmtpPass" placeholder="Senha ou App Password"></div>
+        <div id="sSmtpStatus" style="font-size:13px;margin-bottom:12px"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline btn-sm" onclick="App.testSmtpConfig()"><i class="fas fa-paper-plane"></i> Testar</button>
+          <button class="btn btn-outline btn-sm" onclick="App.closeModal('settingsModal')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="App.saveSmtpConfig()"><i class="fas fa-check"></i> Salvar</button>
+        </div>`;
+      this.loadSmtpConfig();
     }
     this.openModal('settingsModal');
   },
@@ -2640,6 +3029,58 @@ const App = {
     } else {
       document.getElementById('sSpotifyStatus').style.color = 'var(--danger)';
       document.getElementById('sSpotifyStatus').textContent = r?.error || 'Erro ao salvar.';
+    }
+  },
+
+  async loadSmtpConfig() {
+    const r = await API.get('/api/smtp/config');
+    if (r && !r.error) {
+      if (r.host) document.getElementById('sSmtpHost').value = r.host;
+      if (r.port) document.getElementById('sSmtpPort').value = r.port;
+      if (r.from_email) document.getElementById('sSmtpFrom').value = r.from_email;
+      if (r.user) document.getElementById('sSmtpUser').value = r.user;
+      if (r.password) document.getElementById('sSmtpPass').value = r.password;
+    }
+  },
+
+  async saveSmtpConfig() {
+    const body = {
+      host: document.getElementById('sSmtpHost').value.trim(),
+      port: parseInt(document.getElementById('sSmtpPort').value) || 587,
+      from_email: document.getElementById('sSmtpFrom').value.trim(),
+      user: document.getElementById('sSmtpUser').value.trim(),
+      password: document.getElementById('sSmtpPass').value
+    };
+    if (!body.host || !body.user || !body.password) {
+      document.getElementById('sSmtpStatus').style.color = 'var(--danger)';
+      document.getElementById('sSmtpStatus').textContent = 'Preencha host, usuario e senha.';
+      return;
+    }
+    const r = await API.put('/api/smtp/config', body);
+    if (r && r.ok) {
+      document.getElementById('sSmtpStatus').style.color = 'var(--success)';
+      document.getElementById('sSmtpStatus').textContent = 'Configuracao salva!';
+      this.toast('Configuracao SMTP salva!');
+    } else {
+      document.getElementById('sSmtpStatus').style.color = 'var(--danger)';
+      document.getElementById('sSmtpStatus').textContent = r?.error || 'Erro ao salvar.';
+    }
+  },
+
+  async testSmtpConfig() {
+    const statusEl = document.getElementById('sSmtpStatus');
+    statusEl.style.color = 'var(--text-muted)';
+    statusEl.textContent = 'Enviando email de teste...';
+    const q = prompt('Digite o email para receber o teste:');
+    if (!q) { statusEl.textContent = ''; return; }
+    const r = await API.post('/api/smtp/test', { to_email: q.trim() });
+    if (r && r.ok) {
+      statusEl.style.color = 'var(--success)';
+      statusEl.textContent = r.message || 'Email de teste enviado!';
+      this.toast('Email de teste enviado!');
+    } else {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = r?.error || 'Falha ao enviar teste.';
     }
   },
 
@@ -2760,6 +3201,21 @@ const App = {
     }
   },
   closeModal(id) { document.getElementById(id).classList.remove('show'); },
+
+  temporaryModal(html) {
+    let overlay = document.getElementById('tempModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'tempModalOverlay';
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = '<div class="modal" style="max-width:420px;text-align:center" id="tempModalContent"></div>';
+      overlay.addEventListener('click', () => { overlay.classList.remove('show'); overlay.remove(); });
+      overlay.querySelector('.modal')?.addEventListener('click', e => e.stopPropagation());
+      document.body.appendChild(overlay);
+    }
+    document.getElementById('tempModalContent').innerHTML = html;
+    overlay.classList.add('show');
+  },
 
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
