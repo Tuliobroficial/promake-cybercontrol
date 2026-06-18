@@ -64,9 +64,9 @@ tr:hover td{background:var(--bg)}
 .form-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%238888AA' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
 .form-group textarea{resize:vertical;min-height:50px}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .modal-overlay.show{display:flex}
-.modal{background:var(--bg-card);border-radius:var(--radius);padding:28px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);box-shadow:var(--shadow)}
+.modal{background:var(--bg-card);border-radius:var(--radius);padding:28px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;border:1px solid var(--border);box-shadow:var(--shadow);box-sizing:border-box}
 .modal h3{font-size:18px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
 .modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
 .toast{position:fixed;top:20px;right:20px;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;display:none;align-items:center;gap:10px;box-shadow:var(--shadow);font-size:13px;animation:slideIn .3s ease}

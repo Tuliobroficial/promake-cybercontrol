@@ -633,10 +633,13 @@ def init_db():
     }
     for section, pairs in default_config.items():
         for key, value in pairs:
-            db.execute(
-                "INSERT OR IGNORE INTO landing_config (section,key,value) VALUES (?,?,?)",
-                (section, key, value)
-            )
+            try:
+                db.execute(
+                    "INSERT OR IGNORE INTO landing_config (section,key,value) VALUES (?,?,?)",
+                    (section, key, value)
+                )
+            except:
+                pass
     db.commit()
     # Seed admin user if not exists
     cur = db.execute("SELECT id FROM users WHERE email='admin@promake.com'")
@@ -4288,13 +4291,14 @@ def api_spotify_search():
 
 # ─── Init ────────────────────────────────────
 
+init_db()
+t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
+t_conn.start()
+t_sec = threading.Thread(target=monitor_security, daemon=True)
+t_sec.start()
+
 if __name__ == "__main__":
     is_prod = bool(os.environ.get("DATABASE_URL"))
-    init_db()
-    t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
-    t_conn.start()
-    t_sec = threading.Thread(target=monitor_security, daemon=True)
-    t_sec.start()
 
     SERVER_START = datetime.now()
     port = int(os.environ.get("PORT", 8081))
