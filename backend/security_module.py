@@ -424,7 +424,7 @@ SUSPICIOUS_PATTERNS = [
     (r"(\b0x[0-9a-fA-F]+\b|char\s*\(|convert\s*\(|cast\s*\()", "SQL Injection"),
     (r"(/etc/passwd|/etc/shadow|c:\\windows|boot\.ini)", "Path Traversal"),
     (r"(cmd=|exec=|system\(|passthru\(|shell_exec\()", "Command Injection"),
-    (r"(--\s|#|\bOR\b.*=.*\bOR\b|\bAND\b.*=.*\bAND\b)", "SQL Injection"),
+    (r"(--\s|#\s|\bOR\b.*=.*\bOR\b|\bAND\b.*=.*\bAND\b)", "SQL Injection"),
 ]
 
 def scan_request_for_attacks():
