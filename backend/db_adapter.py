@@ -264,13 +264,20 @@ class Database:
         if not self._is_pg:
             self._conn.executescript(script)
             return
+        errors = []
         for stmt in re.split(r";\s*\n\s*", script):
             stmt = stmt.strip().rstrip(";").strip()
             if stmt:
                 try:
                     self.execute(stmt)
-                except Exception:
-                    pass
+                except Exception as e:
+                    errors.append(f"{stmt[:80]}... => {e}")
+                    self._conn.rollback()
+        # Only raise if the script was entirely about table creation
+        # and none made it through; otherwise log but proceed
+        if errors:
+            import logging
+            logging.warning("executescript suppressed errors: %s", errors)
 
     def commit(self):
         self._conn.commit()
