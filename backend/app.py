@@ -12,6 +12,10 @@ import html
 import base64
 import pyotp
 
+BASE_DIR = Path(__file__).parent.parent
+BACKEND_DIR = Path(__file__).parent
+sys.path.insert(0, str(BACKEND_DIR))
+
 from security_module import (
     ROLES, ACL_MODULES, has_permission, get_role_permissions,
     require_role, require_permission, require_mfa, audit_log,
@@ -25,9 +29,6 @@ from security_module import (
     require_not_blocked, SECURITY_HEADERS,
 )
 
-BASE_DIR = Path(__file__).parent.parent
-BACKEND_DIR = Path(__file__).parent
-sys.path.insert(0, str(BACKEND_DIR))
 PYLIB = BASE_DIR / "pylib"
 if PYLIB.exists():
     sys.path.insert(0, str(PYLIB))
