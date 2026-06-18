@@ -2308,11 +2308,14 @@ def api_dashboard():
         (today,)
     ).fetchone()["c"]
 
+    eleven_months_ago = (datetime.now().replace(day=1) - timedelta(days=335)).strftime("%Y-%m-%d")
     revenue_by_month = db.execute(
-        "SELECT strftime('%m',date) as mes, SUM(value) as total FROM transactions WHERE type='income' AND status='completed' AND date>=date('now','-11 months','start of month') GROUP BY mes ORDER BY mes"
+        "SELECT strftime('%m',date) as mes, SUM(value) as total FROM transactions WHERE type='income' AND status='completed' AND date>=? GROUP BY mes ORDER BY mes",
+        (eleven_months_ago,)
     ).fetchall()
     expenses_by_month = db.execute(
-        "SELECT strftime('%m',date) as mes, SUM(value) as total FROM transactions WHERE type='expense' AND status='completed' AND date>=date('now','-11 months','start of month') GROUP BY mes ORDER BY mes"
+        "SELECT strftime('%m',date) as mes, SUM(value) as total FROM transactions WHERE type='expense' AND status='completed' AND date>=? GROUP BY mes ORDER BY mes",
+        (eleven_months_ago,)
     ).fetchall()
 
     projects_by_status = db.execute(
