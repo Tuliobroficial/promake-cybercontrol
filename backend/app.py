@@ -4427,33 +4427,44 @@ def api_restore_data():
     data = request.get_json() or {}
     db = get_db()
     results = {"restored": {}, "errors": []}
+    no_id_tables = {"landing_config", "user_backup_codes", "password_resets", "email_verifications"}
     try:
-        order = ["plans","clients","projects","users","leads","contracts","service_orders","tasks","calendar_events","transactions","client_plans","landing_config"]
+        order = ["plans","clients","projects","users","leads","contracts","service_orders","tasks","calendar_events","transactions","client_plans","landing_config","visit_counter","design_projects","design_stages","design_cards"]
         for table in order:
             rows = data.get(table, [])
             if not rows:
                 continue
+            has_id = table not in no_id_tables
             count = 0
             for row in rows:
                 try:
-                    # Get column names from the row dict
-                    cols = [k for k in row.keys() if k not in ("id",)]
+                    id_val = row.pop("id", None) if has_id else None
+                    cols = [k for k in row.keys() if row.get(k) is not None or k in ("avatar","phone","notes","tags","description")]
                     if not cols:
                         continue
                     placeholders = ",".join("?" for _ in cols)
                     colnames = ",".join(cols)
                     values = [row.get(c) for c in cols]
-                    # Check if row exists with same unique fields
-                    existing = None
-                    if table == "landing_config" and "section" in row and "key" in row:
-                        existing = db.execute("SELECT 1 FROM landing_config WHERE section=? AND key=?", (row["section"], row["key"])).fetchone()
-                    elif table in ("plans", "tasks") and "id" in row:
-                        existing = db.execute(f"SELECT 1 FROM {table} WHERE id=?", (row["id"],)).fetchone()
+                    # Check if row exists
+                    existing = False
+                    if table == "landing_config":
+                        existing = bool(db.execute("SELECT 1 FROM landing_config WHERE section=? AND key=?", (row.get("section",""), row.get("key",""))).fetchone())
+                    elif has_id and id_val is not None:
+                        try:
+                            existing = bool(db.execute(f"SELECT 1 FROM {table} WHERE id=?", (id_val,)).fetchone())
+                        except:
+                            pass
                     if not existing:
-                        db.execute(f"INSERT INTO {table} ({colnames}) VALUES ({placeholders})", values)
+                        if table in no_id_tables and db.is_postgres:
+                            raw = db.cursor()
+                            pg_sql = f"INSERT INTO {table} ({colnames}) VALUES ({','.join('%s' for _ in cols)})"
+                            raw.execute(pg_sql, values)
+                        else:
+                            db.execute(f"INSERT INTO {table} ({colnames}) VALUES ({placeholders})", values)
                         count += 1
                 except Exception as erow:
-                    results["errors"].append(f"{table}: {str(erow)[:100]}")
+                    err_msg = str(erow)[:120]
+                    results["errors"].append(f"{table}: {err_msg}")
             if count:
                 db.commit()
                 results["restored"][table] = count
