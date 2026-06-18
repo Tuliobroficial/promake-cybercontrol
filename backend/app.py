@@ -2291,7 +2291,7 @@ def api_dashboard():
     ).fetchall()
 
     projects_by_status = db.execute(
-        "SELECT CASE WHEN p.deadline IS NOT NULL AND p.deadline!='' AND p.deadline<? AND p.status!='completed' THEN 'atrasado' ELSE p.status END as status, COUNT(*) as total FROM projects p GROUP BY status",
+        "SELECT CASE WHEN p.deadline IS NOT NULL AND p.deadline!='' AND p.deadline<? AND p.status!='completed' THEN 'atrasado' ELSE p.status END as status, COUNT(*) as total FROM projects p GROUP BY 1",
         (today,)
     ).fetchall()
 
@@ -4483,10 +4483,11 @@ t_sec.start()
 t_bkp = threading.Thread(target=backup_worker, daemon=True)
 t_bkp.start()
 
+SERVER_START = datetime.now()
+
 if __name__ == "__main__":
     is_prod = bool(os.environ.get("DATABASE_URL"))
 
-    SERVER_START = datetime.now()
     port = int(os.environ.get("PORT", 8081))
     print(f"\n  PROMAKE DASH v2.0")
     print(f"  ====================")
