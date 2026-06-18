@@ -4456,9 +4456,10 @@ def api_restore_data():
                             pass
                     if not existing:
                         if table in no_id_tables and db.is_postgres:
-                            raw = db.cursor()
+                            raw_conn = db.get_connection()
+                            raw_cur = raw_conn.cursor()
                             pg_sql = f"INSERT INTO {table} ({colnames}) VALUES ({','.join('%s' for _ in cols)})"
-                            raw.execute(pg_sql, values)
+                            raw_cur.execute(pg_sql, values)
                         else:
                             db.execute(f"INSERT INTO {table} ({colnames}) VALUES ({placeholders})", values)
                         count += 1
