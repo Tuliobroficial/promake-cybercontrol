@@ -4293,6 +4293,36 @@ def api_spotify_search():
     limit = request.args.get("limit", 20)
     return _spotify_get(f"/search?q={urllib.parse.quote(q)}&type={stype}&limit={limit}")
 
+# ─── Backup ────────────────────────────────
+
+from backup_manager import create_backup, list_backups, get_backup_path, backup_worker
+
+@app.route("/api/admin/backup", methods=["POST"])
+@require_auth
+@require_role("super_admin", "admin")
+def api_trigger_backup():
+    result = create_backup()
+    if not result:
+        return jsonify({"error": "Falha ao criar backup"}), 500
+    if "error" in result:
+        return jsonify({"error": result["error"]}), 500
+    return jsonify({"message": "Backup criado", "backup": result})
+
+@app.route("/api/admin/backups", methods=["GET"])
+@require_auth
+@require_role("super_admin", "admin")
+def api_list_backups():
+    return jsonify({"rows": list_backups()})
+
+@app.route("/api/admin/backup/<filename>", methods=["GET"])
+@require_auth
+@require_role("super_admin", "admin")
+def api_download_backup(filename):
+    path = get_backup_path(filename)
+    if not path:
+        return jsonify({"error": "Arquivo nao encontrado"}), 404
+    return send_from_directory(path.parent, path.name, as_attachment=True)
+
 # ─── Init ────────────────────────────────────
 
 init_db()
@@ -4300,6 +4330,8 @@ t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
 t_conn.start()
 t_sec = threading.Thread(target=monitor_security, daemon=True)
 t_sec.start()
+t_bkp = threading.Thread(target=backup_worker, daemon=True)
+t_bkp.start()
 
 if __name__ == "__main__":
     is_prod = bool(os.environ.get("DATABASE_URL"))

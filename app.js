@@ -6752,6 +6752,26 @@ const App = {
       html += '</table>';
     }
     html += '</div></div>' +
+
+      '<!-- Backups -->' +
+      '<div class="card" style="padding:16px;margin-top:16px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<h4 style="margin:0"><i class="fas fa-database"></i> Backups</h4>' +
+      '<button id="triggerBackupBtn" class="btn btn-primary btn-sm"><i class="fas fa-database"></i> Criar Backup</button>' +
+      '</div>' +
+      '<p style="font-size:12px;color:var(--text-muted);margin:8px 0">Backup automatico a cada 1h (max 48 arquivos)</p>' +
+      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
+    const backupList = await API.get('/api/admin/backups');
+    if (backupList?.rows?.length) {
+      html += '<table style="width:100%;font-size:12px"><tr><th>Arquivo</th><th>Tamanho</th><th>Data</th><th>Acao</th></tr>';
+      html += backupList.rows.map(b =>
+        '<tr><td style="padding:4px">' + b.filename + '</td><td>' + (b.size/1024).toFixed(1) + ' KB</td><td>' + b.timestamp + '</td><td><a class="btn btn-xs btn-outline" href="/api/admin/backup/' + b.filename + '" target="_blank"><i class="fas fa-download"></i></a></td></tr>'
+      ).join('');
+      html += '</table>';
+    } else {
+      html += '<p style="color:var(--text-muted);font-size:13px">Nenhum backup ainda</p>';
+    }
+    html += '</div></div>' +
       '</div>';
     content.innerHTML = html;
     document.getElementById('blockIpBtn')?.addEventListener('click', async () => {
@@ -6763,10 +6783,25 @@ const App = {
     document.querySelectorAll('.revoke-session').forEach(btn => {
       btn.addEventListener('click', async () => {
         const token = btn.dataset.token;
-        await API.post('/api/super-admin/revoke-session', { token });
+        await API.post('/api/admin/revoke-session', { token });
         this.toast('Sessao revogada', 'info');
         this.renderSuperAdmin();
       });
+    });
+    // Backup controls
+    document.getElementById('triggerBackupBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('triggerBackupBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backup...';
+      const result = await API.post('/api/admin/backup');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-database"></i> Criar Backup';
+      if (result?.backup) {
+        this.toast('Backup criado: ' + result.backup.filename, 'success');
+        this.renderSuperAdmin();
+      } else {
+        this.toast(result?.error || 'Erro ao criar backup', 'error');
+      }
     });
   },
 };
