@@ -1339,9 +1339,19 @@ def api_reset_password():
     log_activity("alterou", "senha", user_id, "Senha redefinida via token")
     return jsonify({"ok": True, "message": "Senha redefinida com sucesso"})
 
-@app.route("/api/auth/profile")
+@app.route("/api/auth/profile", methods=["GET", "PUT"])
 @require_auth
 def api_profile():
+    if request.method == "PUT":
+        data = request.get_json() or {}
+        db = get_db()
+        user = get_current_user()
+        allowed = {k: data[k] for k in ("name","email","phone","avatar") if k in data}
+        if allowed:
+            sets = ", ".join(f"{k}=?" for k in allowed)
+            db.execute(f"UPDATE users SET {sets} WHERE id=?", tuple(allowed.values()) + (user["id"],))
+            db.commit()
+        return jsonify({"ok": True, "user": dict(db.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone())})
     return jsonify(get_current_user())
 
 @app.route("/api/auth/register", methods=["POST"])
