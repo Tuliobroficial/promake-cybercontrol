@@ -702,32 +702,36 @@ def init_db():
         INSERT INTO tasks (service_order_id,title,status,deadline,order_idx) VALUES (1,'Criar rascunhos','active','2026-05-15',2);
         INSERT INTO tasks (service_order_id,title,status,deadline,order_idx) VALUES (1,'Aprovacao cliente','pending','2026-05-18',3);
         """)
-    # Seed design projects if empty
-    try:
-        if not db.execute("SELECT id FROM design_projects").fetchone():
-            db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
-                ("Campanha Redes Sociais - Tech Solutions","Criacao de artes para campanha de midia social - 15 pecas para feed e stories","Tech Solutions","2026-07-15",1))
-            dp1 = db.last_insert_rowid
-            db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
-                ("Identidade Visual Corp Ltda","Desenvolvimento de identidade visual completa: logo, tipografia, paleta de cores e aplicacoes","Corp Ltda","2026-08-01",3))
-            dp2 = db.last_insert_rowid
-            db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
-                ("Material Grafico - Negocios SA","Folder institucional, catalogo de produtos e apresentacao comercial","Negocios SA","2026-07-30",3))
-            dp3 = db.last_insert_rowid
-            for pid in [dp1, dp2, dp3]:
-                for idx, (t, c) in enumerate([("Briefing","#6C5CE7"),("Criacao","#00B0FF"),("Revisao","#FFD600"),("Aprovacao","#FF9800"),("Finalizado","#00C853")]):
-                    db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,created_by) VALUES (?,?,?,?,?,?)",
-                        (pid,t,"",c,idx,1))
-            for card in [
-                (dp1,"Posts Instagram - Semana 1","5 posts para feed sobre lancamento","criacao","#E91E63","2026-06-25","Joao Designer",0,3),
-                (dp1,"Stories diarios","15 stories para a semana de lancamento","criacao","#9C27B0","2026-06-26","Joao Designer",1,3),
-                (dp1,"Revisar artes com cliente","Apresentar para aprovacao do cliente","revisao","#FF9800","2026-06-28","Maria Silva",0,1),
-                (dp1,"Ajustes finais","Corrigir feedback do cliente","aprovacao","#F44336","2026-06-30","Joao Designer",0,3),
-                (dp1,"Briefing inicial","Reuniao com cliente para alinhamento","briefing","#4CAF50","2026-06-20","Maria Silva",0,1),
-            ]:
-                db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)", card)
-    except Exception:
-        pass
+    # Seed design projects if empty (only SQLite path, PG uses separate endpoint)
+    if not db.is_postgres:
+        try:
+            if not db.execute("SELECT id FROM design_projects").fetchone():
+                db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+                    ("Campanha Redes Sociais - Tech Solutions","Criacao de artes para campanha de midia social - 15 pecas para feed e stories","Tech Solutions","2026-07-15",1))
+                dp1 = db.last_insert_rowid
+                db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+                    ("Identidade Visual Corp Ltda","Desenvolvimento de identidade visual completa: logo, tipografia, paleta de cores e aplicacoes","Corp Ltda","2026-08-01",3))
+                dp2 = db.last_insert_rowid
+                db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+                    ("Material Grafico - Negocios SA","Folder institucional, catalogo de produtos e apresentacao comercial","Negocios SA","2026-07-30",3))
+                dp3 = db.last_insert_rowid
+                db.commit()
+                for pid in [dp1, dp2, dp3]:
+                    for idx, (t, c) in enumerate([("Briefing","#6C5CE7"),("Criacao","#00B0FF"),("Revisao","#FFD600"),("Aprovacao","#FF9800"),("Finalizado","#00C853")]):
+                        db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,created_by) VALUES (?,?,?,?,?,?)",
+                            (pid,t,"",c,idx,1))
+                db.commit()
+                for card in [
+                    (dp1,"Posts Instagram - Semana 1","5 posts para feed sobre lancamento","criacao","#E91E63","2026-06-25","Joao Designer",0,3),
+                    (dp1,"Stories diarios","15 stories para a semana de lancamento","criacao","#9C27B0","2026-06-26","Joao Designer",1,3),
+                    (dp1,"Revisar artes com cliente","Apresentar para aprovacao do cliente","revisao","#FF9800","2026-06-28","Maria Silva",0,1),
+                    (dp1,"Ajustes finais","Corrigir feedback do cliente","aprovacao","#F44336","2026-06-30","Joao Designer",0,3),
+                    (dp1,"Briefing inicial","Reuniao com cliente para alinhamento","briefing","#4CAF50","2026-06-20","Maria Silva",0,1),
+                ]:
+                    db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)", card)
+                db.commit()
+        except Exception:
+            pass
     # Seed plans if empty
     if not db.execute("SELECT id FROM plans").fetchone():
         db.executescript("""
@@ -4348,6 +4352,58 @@ def api_download_backup(filename):
     if not path:
         return jsonify({"error": "Arquivo nao encontrado"}), 404
     return send_from_directory(path.parent, path.name, as_attachment=True)
+
+# ─── Seed Design (PG) ──────────────────────
+
+@app.route("/api/admin/seed-design", methods=["POST"])
+@require_auth
+@require_role("super_admin", "admin")
+def api_seed_design():
+    db = get_db()
+    try:
+        cur = db.execute("SELECT id FROM users WHERE email='admin@promake.com'")
+        admin = cur.fetchone()
+        if not admin:
+            return jsonify({"error": "Admin nao encontrado"}), 500
+        admin_id = admin["id"]
+        cur = db.execute("SELECT id FROM users WHERE email='joao@promake.com'")
+        designer = cur.fetchone()
+        designer_id = designer["id"] if designer else admin_id
+
+        if db.execute("SELECT id FROM design_projects").fetchone():
+            return jsonify({"message": "Projetos ja existem"})
+
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Campanha Redes Sociais - Tech Solutions","Criacao de artes para campanha de midia social - 15 pecas","Tech Solutions","2026-07-15",admin_id))
+        dp1 = db.last_insert_rowid
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Identidade Visual Corp Ltda","Identidade visual completa: logo, tipografia, paleta de cores e aplicacoes","Corp Ltda","2026-08-01",designer_id))
+        dp2 = db.last_insert_rowid
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Material Grafico - Negocios SA","Folder institucional, catalogo de produtos e apresentacao comercial","Negocios SA","2026-07-30",designer_id))
+        dp3 = db.last_insert_rowid
+        db.commit()
+
+        for pid in [dp1, dp2, dp3]:
+            for i, nm in enumerate(["Briefing","Criacao","Revisao","Aprovacao","Finalizado"]):
+                db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,created_by) VALUES (?,?,?,?,?,?)",
+                    (pid,nm,"",["#6C5CE7","#00B0FF","#FFD600","#FF9800","#00C853"][i],i,admin_id))
+        db.commit()
+
+        cards = [
+            (dp1,"Posts Instagram - Semana 1","5 posts feed lancamento","criacao","#E91E63","2026-06-25","Joao Designer",0,designer_id),
+            (dp1,"Stories diarios","15 stories semana lancamento","criacao","#9C27B0","2026-06-26","Joao Designer",1,designer_id),
+            (dp1,"Revisar artes com cliente","Apresentar para aprovacao","revisao","#FF9800","2026-06-28","Maria Silva",0,admin_id),
+            (dp1,"Ajustes finais","Corrigir feedback do cliente","aprovacao","#F44336","2026-06-30","Joao Designer",0,designer_id),
+            (dp1,"Briefing inicial","Reuniao com cliente","briefing","#4CAF50","2026-06-20","Maria Silva",0,admin_id),
+        ]
+        for c in cards:
+            db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)", c)
+        db.commit()
+        return jsonify({"ok": True, "message": "Seed de design criado com 3 projetos"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # ─── Init ────────────────────────────────────
 
