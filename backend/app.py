@@ -58,10 +58,14 @@ import traceback as _traceback
 @app.errorhandler(500)
 def _handle_500(e):
     tb = _traceback.format_exc()
-    original = getattr(e, "original_exception", None)
-    if original:
-        tb = "".join(_traceback.format_exception(type(original), original, original.__traceback__))
+    if hasattr(e, "original_exception"):
+        orig = e.original_exception
+        tb = "".join(_traceback.format_exception(type(orig), orig, orig.__traceback__ or None))
     return jsonify({"error": str(e), "traceback": tb}), 500
+
+@app.route("/api/deploy-info")
+def api_deploy_info():
+    return jsonify({"commit": "ed4eef8", "time": "2026-06-18 11:00", "error_handler": True})
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "promake-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
