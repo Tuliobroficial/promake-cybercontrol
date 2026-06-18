@@ -261,23 +261,18 @@ class Database:
         return _Cursor(cursor=cur)
 
     def executescript(self, script):
+        sql = self._convert_sql(script)
         if not self._is_pg:
-            self._conn.executescript(script)
+            self._conn.executescript(sql)
             return
-        errors = []
-        for stmt in re.split(r";\s*\n\s*", script):
+        cur = self._conn.cursor()
+        # psycopg2 cannot execute multiple statements in one execute() call,
+        # so we split. Errors propagate — do NOT swallow them.
+        for stmt in re.split(r";\s*\n\s*", sql):
             stmt = stmt.strip().rstrip(";").strip()
             if stmt:
-                try:
-                    self.execute(stmt)
-                except Exception as e:
-                    errors.append(f"{stmt[:80]}... => {e}")
-                    self._conn.rollback()
-        # Only raise if the script was entirely about table creation
-        # and none made it through; otherwise log but proceed
-        if errors:
-            import logging
-            logging.warning("executescript suppressed errors: %s", errors)
+                cur.execute(stmt)
+        self._conn.commit()
 
     def commit(self):
         self._conn.commit()
