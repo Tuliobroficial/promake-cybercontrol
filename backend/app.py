@@ -598,7 +598,10 @@ def init_db():
             db.execute(f"ALTER TABLE design_timeline_items ADD COLUMN {col}")
         except:
             pass
-    db.execute("UPDATE design_stages SET x = (COALESCE(order_idx,0) + 1) * 300 WHERE x = 0 AND y = 0 AND order_idx > 0")
+    try:
+        db.execute("UPDATE design_stages SET x = (COALESCE(order_idx,0) + 1) * 300 WHERE x = 0 AND y = 0 AND order_idx > 0")
+    except:
+        pass
     # Seed landing page defaults
     default_config = {
         'hero': [
