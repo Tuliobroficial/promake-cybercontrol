@@ -702,6 +702,40 @@ def init_db():
         INSERT INTO tasks (service_order_id,title,status,deadline,order_idx) VALUES (1,'Criar rascunhos','active','2026-05-15',2);
         INSERT INTO tasks (service_order_id,title,status,deadline,order_idx) VALUES (1,'Aprovacao cliente','pending','2026-05-18',3);
         """)
+    # Seed design projects if empty
+    if not db.execute("SELECT id FROM design_projects").fetchone():
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Campanha Redes Sociais - Tech Solutions","Criacao de artes para campanha de midia social - 15 pecas para feed e stories","Tech Solutions","2026-07-15",1))
+        dp1 = db.last_insert_rowid
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Identidade Visual Corp Ltda","Desenvolvimento de identidade visual completa: logo, tipografia, paleta de cores e aplicacoes","Corp Ltda","2026-08-01",3))
+        dp2 = db.last_insert_rowid
+        db.execute("INSERT INTO design_projects (name,description,client_name,deadline,created_by) VALUES (?,?,?,?,?)",
+            ("Material Grafico - Negocios SA","Folder institucional, catalogo de produtos e apresentacao comercial","Negocios SA","2026-07-30",3))
+        dp3 = db.last_insert_rowid
+        # Stages for each project
+        for pid in [dp1, dp2, dp3]:
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
+                (pid,"Briefing","Levantamento de requisitos e referenciais","#6C5CE7",0,300,1))
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
+                (pid,"Criacao","Desenvolvimento das pecas","#00B0FF",1,600,1))
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
+                (pid,"Revisao","Ajustes e correcoes","#FFD600",2,900,1))
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
+                (pid,"Aprovacao","Aprovacao final do cliente","#FF9800",3,1200,1))
+            db.execute("INSERT INTO design_stages (project_id,title,description,color,order_idx,x,created_by) VALUES (?,?,?,?,?,?,?)",
+                (pid,"Finalizado","Projeto concluido","#00C853",4,1500,1))
+        # Cards for project 1
+        db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (dp1,"Posts Instagram - Semana 1","5 posts para feed sobre lancamento","criacao","#E91E63","2026-06-25","Joao Designer",0,3))
+        db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (dp1,"Stories diarios","15 stories para a semana de lancamento","criacao","#9C27B0","2026-06-26","Joao Designer",1,3))
+        db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (dp1,"Revisar artes com cliente","Apresentar para aprovacao do cliente","revisao","#FF9800","2026-06-28","Maria Silva",0,1))
+        db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (dp1,"Ajustes finais","Corrigir feedback do cliente","aprovacao","#F44336","2026-06-30","Joao Designer",0,3))
+        db.execute("INSERT INTO design_cards (project_id,title,description,stage,color_tag,deadline,assigned_to,order_idx,created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            (dp1,"Briefing inicial","Reuniao com cliente para alinhamento","briefing","#4CAF50","2026-06-20","Maria Silva",0,1))
     # Seed plans if empty
     if not db.execute("SELECT id FROM plans").fetchone():
         db.executescript("""
