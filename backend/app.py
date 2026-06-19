@@ -597,7 +597,10 @@ def init_db():
     # Migration: add MFA columns to users
     for col in ["mfa_secret TEXT DEFAULT ''", "mfa_enabled INTEGER DEFAULT 0", "mfa_recovery TEXT DEFAULT ''"]:
         try:
-            db.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            if db.is_postgres:
+                db.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col}")
+            else:
+                db.execute(f"ALTER TABLE users ADD COLUMN {col}")
         except:
             pass
     # Migration: add locked/x/y columns to design_stages if missing
@@ -4580,29 +4583,6 @@ def api_restore_data():
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
-
-# ─── Migration Helper (temp) ──────────────────
-
-@app.route("/api/super-admin/migrate-mfa", methods=["POST"])
-@require_auth
-@require_role("super_admin","admin")
-def api_migrate_mfa():
-    db = get_db()
-    cols = ["mfa_secret TEXT DEFAULT ''", "mfa_enabled INTEGER DEFAULT 0", "mfa_recovery TEXT DEFAULT ''"]
-    added = []
-    errors = []
-    for col in cols:
-        col_name = col.split()[0]
-        try:
-            if db.is_postgres:
-                db.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col}")
-            else:
-                db.execute(f"ALTER TABLE users ADD COLUMN {col}")
-            db.commit()
-            added.append(col_name)
-        except Exception as e:
-            errors.append(f"{col_name}: {e}")
-    return jsonify({"added": added, "errors": errors})
 
 # ─── Init ────────────────────────────────────
 
