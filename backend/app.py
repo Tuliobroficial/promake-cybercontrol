@@ -1661,7 +1661,7 @@ def api_team():
 @require_auth
 def api_team_member(uid):
     cur = get_current_user()
-    if cur["role"] not in ("admin", "manager") and cur["id"] != uid:
+    if cur["role"] not in ("super_admin", "admin", "manager") and cur["id"] != uid:
         return jsonify({"error": "Sem permissao"}), 403
     db = get_db()
     if request.method == "DELETE":
