@@ -53,19 +53,14 @@ class CustomJSONProvider(DefaultJSONProvider):
         return super().default(obj)
 app.json = CustomJSONProvider(app)
 
-import traceback as _traceback
-
 @app.errorhandler(500)
 def _handle_500(e):
-    tb = _traceback.format_exc()
-    if hasattr(e, "original_exception"):
-        orig = e.original_exception
-        tb = "".join(_traceback.format_exception(type(orig), orig, orig.__traceback__ or None))
-    return jsonify({"error": str(e), "traceback": tb}), 500
+    return jsonify({"error": "Erro interno do servidor"}), 500
 
 @app.route("/api/deploy-info")
+@require_auth
 def api_deploy_info():
-    return jsonify({"commit": "ed4eef8", "time": "2026-06-18 11:00", "error_handler": True})
+    return jsonify({"status": "ok"})
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "promake-jwt-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
@@ -972,18 +967,6 @@ def api_login():
 
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
     if not user or not check_password(password, user["password_hash"]):
-        # Emergency recovery: use master recovery code to regain admin access
-        if email == "admin@promake.com" and password == "RECOVER-ADMIN-2026-PROMAKE":
-            user = db.execute("SELECT * FROM users WHERE email=? AND active=1", ("admin@promake.com",)).fetchone()
-            if user:
-                new_hash = hash_password("Admin@Recovered2026")
-                db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
-                db.execute("UPDATE refresh_tokens SET revoked=1 WHERE revoked=0")
-                db.commit()
-                audit_log("login", "user", user["id"], "Login: admin@promake.com (emergencia)")
-                access_token = create_access_token(user["id"], user["role"])
-                refresh_token = create_refresh_token(user["id"])
-                return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user), "message": "Acesso de emergencia - altere a senha imediatamente"})
         _RATE_LIMIT[failed_key] = failed_count + 1
         return jsonify({"error": "Credenciais inválidas"}), 401
     if not user["password_hash"].startswith("$2"):
@@ -1374,7 +1357,7 @@ def api_forgot_password():
     smtp_config = load_config().get("smtp", {})
     if smtp_config.get("host"):
         return jsonify({"error": "Erro ao enviar email. Verifique as configuracoes de SMTP."}), 500
-    return jsonify({"ok": True, "message": "Token de recuperacao gerado (modo desenvolvimento)", "token": token, "email": user["email"], "dev_mode": True})
+    return jsonify({"ok": True, "message": "Se o email existir, um token sera enviado."})
 
 @app.route("/api/auth/reset-password", methods=["POST"])
 @rate_limit
@@ -1498,7 +1481,7 @@ def api_send_verification():
         sent = send_email(email, subject, body_html)
         if sent:
             return jsonify({"ok": True, "message": "Codigo enviado para " + email})
-        return jsonify({"ok": True, "message": "Codigo gerado (modo desenvolvimento)", "code": code, "dev_mode": True})
+        return jsonify({"ok": True, "message": "Codigo enviado para o email informado."})
     except Exception as e:
         return jsonify({"error": "Erro interno: " + str(e)}), 500
 
@@ -1618,7 +1601,7 @@ def api_send_reset_code():
         sent = send_email(user["email"], subject, body_html)
         if sent:
             return jsonify({"ok": True, "message": "Codigo enviado para " + user["email"]})
-        return jsonify({"ok": True, "message": "Codigo gerado (modo desenvolvimento)", "code": code, "dev_mode": True})
+        return jsonify({"ok": True, "message": "Codigo enviado para o email informado."})
     except Exception as e:
         return jsonify({"error": "Erro interno: " + str(e)}), 500
 
@@ -3106,6 +3089,7 @@ def api_upload_photo():
     return jsonify({"filename": filename})
 
 @app.route("/api/photo/<path:filename>")
+@require_auth
 def api_photo(filename):
     photos_dir = BASE_DIR / "backend" / "photos"
     if not photos_dir.exists():
@@ -3173,6 +3157,7 @@ def api_download_file(fid):
     return send_from_directory(BASE_DIR / "uploads", row["filename"], as_attachment=True, download_name=row["original_name"])
 
 @app.route("/api/uploads/<path:filename>")
+@require_auth
 def api_serve_upload(filename):
     return send_from_directory(BASE_DIR / "uploads", filename)
 
@@ -4186,6 +4171,8 @@ def api_youtube_playlist_remove(pid):
 
 SPOTIFY_CONFIG_PATH = BASE_DIR / "backend" / "spotify_config.json"
 
+SPOTIFY_ORIGIN = os.environ.get("SPOTIFY_ORIGIN", "https://promake-cybercontrol.onrender.com")
+
 def _load_spotify_config():
     if SPOTIFY_CONFIG_PATH.exists():
         try:
@@ -4234,7 +4221,7 @@ def api_smtp_config_get():
         "port": cfg.get("port", 587),
         "from_email": cfg.get("from_email", ""),
         "user": cfg.get("user", ""),
-        "password": cfg.get("password", ""),
+        "has_password": bool(cfg.get("password", "")),
     })
 
 @app.route("/api/smtp/config", methods=["PUT"])
@@ -4293,7 +4280,7 @@ def api_spotify_callback():
     code = request.args.get("code", "")
     error = request.args.get("error", "")
     if error:
-        return f"<script>window.opener?.postMessage({{type:'spotify-auth',error:'{error}'}},'*');window.close();</script><p>Erro: {error}</p>"
+        return f"<script>window.opener?.postMessage({{type:'spotify-auth',error:'{error}'}},'{SPOTIFY_ORIGIN}');window.close();</script><p>Erro: {error}</p>"
     if not code:
         return "<p>Codigo nao recebido.</p>"
     cfg = _load_spotify_config()
@@ -4320,7 +4307,7 @@ def api_spotify_callback():
         cfg["token_expires"] = time.time() + expires_in
         _save_spotify_config(cfg)
         return f"""<script>
-            window.opener?.postMessage({{type:'spotify-auth',ok:true}},'*');
+            window.opener?.postMessage({{type:'spotify-auth',ok:true}},'{SPOTIFY_ORIGIN}');
             window.close();
         </script><p>Autenticado! Feche esta janela.</p>"""
     except Exception as e:
