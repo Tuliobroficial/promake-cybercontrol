@@ -952,9 +952,20 @@ def api_login():
     data = request.get_json() or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
+    client_ip = get_client_ip()
     db = get_db()
+
+    # Brute force protection: block IP after 5 failed attempts in 15 min
+    failed_key = f"login_fail:{client_ip}"
+    failed_count = _RATE_LIMIT.get(failed_key, 0)
+    if failed_count >= 5:
+        from security_module import block_ip
+        block_ip(client_ip, 1)
+        return jsonify({"error": "Muitas tentativas. IP bloqueado por 1 hora"}), 429
+
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
     if not user or not check_password(password, user["password_hash"]):
+        _RATE_LIMIT[failed_key] = failed_count + 1
         return jsonify({"error": "Credenciais inválidas"}), 401
     if not user["password_hash"].startswith("$2"):
         new_hash = hash_password(password)
@@ -1239,7 +1250,7 @@ def api_super_admin_sessions():
 
 @app.route("/api/super-admin/block-ip", methods=["POST"])
 @require_auth
-@require_role("super_admin")
+@require_role("super_admin", "admin")
 def api_super_admin_block_ip():
     data = request.get_json() or {}
     ip = data.get("ip", "")
@@ -1253,17 +1264,22 @@ def api_super_admin_block_ip():
 
 @app.route("/api/super-admin/revoke-session", methods=["POST"])
 @require_auth
-@require_role("super_admin")
+@require_role("super_admin", "admin")
 def api_super_admin_revoke_session():
     data = request.get_json() or {}
     token = data.get("token", "")
     if not token:
         return jsonify({"error": "Token obrigatorio"}), 400
     db = get_db()
+    if token == "ALL":
+        db.execute("UPDATE refresh_tokens SET revoked=1")
+        db.commit()
+        audit_log("revoke_all_sessions", "session", None, "Todas as sessoes revogadas")
+        return jsonify({"ok": True, "message": "Todas as sessoes foram revogadas"})
     db.execute("UPDATE refresh_tokens SET revoked=1 WHERE token=?", (token,))
     db.commit()
-    audit_log("revoke_session", "session", None, "Sessao revogada por super admin")
-    return jsonify({"ok": True})
+    audit_log("revoke_session", "session", None, "Sessao revogada por admin")
+    return jsonify({"ok": True, "message": "Sessao revogada"})
 
 @app.route("/api/super-admin/users")
 @require_auth
