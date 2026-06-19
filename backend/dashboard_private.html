@@ -1,0 +1,900 @@
+﻿<div id="app">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand" id="sidebarBrand" onclick="App.uploadLogo()">
+      <div class="brand-logo" id="brandLogo"><i class="fas fa-crown"></i></div>
+      <span>Promake Ecosystem</span>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></div>
+      <div class="nav-section" data-section="gestao">
+        <div class="nav-section-header" onclick="App.toggleNavSection('gestao')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Gestão</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="leads"><i class="fas fa-funnel-dollar"></i><span>CRM / Leads</span></div>
+          <div class="nav-item" data-page="clients"><i class="fas fa-users"></i><span>Clientes</span></div>
+          <div class="nav-item" data-page="contracts"><i class="fas fa-file-signature"></i><span>Contratos</span></div>
+          <div class="nav-item" data-page="finance"><i class="fas fa-dollar-sign"></i><span>Financeiro</span></div>
+          <div class="nav-item" data-page="marketing"><i class="fas fa-ad"></i><span>Marketing</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="operacional">
+        <div class="nav-section-header" onclick="App.toggleNavSection('operacional')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Operacional</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="projects"><i class="fas fa-tasks"></i><span>Projetos</span></div>
+          <div class="nav-item" data-page="services"><i class="fas fa-clipboard-list"></i><span>OS</span></div>
+          <div class="nav-item" data-page="kanban"><i class="fas fa-columns"></i><span>Kanban</span></div>
+          <div class="nav-item" data-page="team"><i class="fas fa-user-friends"></i><span>Equipe</span></div>
+          <div class="nav-item" data-page="developments"><i class="fas fa-building"></i><span>Empreendimentos</span></div>
+          <div class="nav-item" data-page="systems"><i class="fas fa-globe"></i><span>Sistemas</span></div>
+        </div>
+      </div>
+      <div class="nav-section" data-section="criativo">
+        <div class="nav-section-header" onclick="App.toggleNavSection('criativo')">
+          <i class="fas fa-chevron-right section-arrow"></i><span>Criativo</span>
+        </div>
+        <div class="nav-section-items">
+          <div class="nav-item" data-page="design"><i class="fas fa-paint-brush"></i><span>Projetos Criativos</span></div>
+          <div class="nav-item" data-page="timeline"><i class="fas fa-stream"></i><span>Linha do Tempo</span></div>
+          <div class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i><span>Relatórios</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>Configurações</span></div>
+    </div>
+  </nav>
+  <div class="main-content">
+    <header class="main-header">
+      <div class="header-left">
+        <button class="header-btn" id="sidebarToggle" onclick="App.toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="header-search" onclick="App.openSearch()">
+          <i class="fas fa-search"></i>
+          <span>Pesquisar...</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-btn" onclick="App.toggleFullscreen()" title="Tela cheia"><i class="fas fa-expand"></i></div>
+        <div class="header-btn notif-btn" id="notifBtn" onclick="App.openNotifications()" title="Notificações">
+          <i class="fas fa-bell"></i>
+          <span class="notif-badge" id="notifBadge" style="display:none"></span>
+        </div>
+        <div class="user-info" onclick="App.openSettings()" style="cursor:pointer">
+          <div class="user-avatar" id="userAvatar"></div>
+          <div>
+            <div class="user-name" id="userName">Admin</div>
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase" id="userRole">Admin</div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div id="pageContent">
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h2 class="page-title" id="pageTitle"><i class="fas fa-chart-pie"></i> Dashboard</h2>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="dashboardControls">
+            <select id="dashboardClientFilter" onchange="App.renderDashboard()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;max-width:200px">
+              <option value="">Todos os clientes</option>
+              <option value="all">Visão Geral</option>
+            </select>
+            <select id="dashboardPeriod" onchange="App.renderDashboard()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+              <option value="month">Este Mês</option>
+              <option value="quarter">Este Trimestre</option>
+              <option value="year">Este Ano</option>
+              <option value="all">Todo Período</option>
+            </select>
+          </div>
+        </div>
+        <div class="dashboard-grid" id="dashCards"></div>
+        <div class="dashboard-grid" id="dashFinanceCards"></div>
+        <div class="card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-chart-bar"></i> Receitas vs Despesas</h4>
+          <canvas id="finChart" style="height:250px"></canvas>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-users"></i> Leads por Origem</h4>
+          <canvas id="leadChart" style="height:250px"></canvas>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-calendar-check"></i> Próximos Eventos</h4>
+          <div id="dashEventsCompact"></div>
+        </div>
+      </div>
+      <div class="page" id="page-leads"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-funnel-dollar"></i> CRM / Leads</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openLeadModal()"><i class="fas fa-plus"></i> Novo Lead</button>
+      </div>
+      <div class="card"><div id="leadBoard"></div></div></div>
+      <div class="page" id="page-clients"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-users"></i> Clientes</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openClientModal()"><i class="fas fa-plus"></i> Novo Cliente</button>
+      </div>
+      <div class="card"><div id="clientList"></div></div></div>
+      <div class="page" id="page-projects"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-tasks"></i> Projetos</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openProjectModal()"><i class="fas fa-plus"></i> Novo Projeto</button>
+      </div>
+      <div class="card"><div id="projectList"></div></div></div>
+      <div class="page" id="page-finance"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-dollar-sign"></i> Financeiro</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="App.toggleFinVisibility()" id="finToggleBtn" title="Alternar visibilidade dos valores"><i class="fas fa-eye"></i></button>
+          <button class="btn btn-primary btn-sm" onclick="App.openTransactionModal()"><i class="fas fa-plus"></i> Nova Transação</button>
+          <button class="btn btn-outline btn-sm" onclick="App.openFinSummary()"><i class="fas fa-file-invoice"></i> Resumo</button>
+          <select id="financePeriod" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            <option value="month">Este Mês</option>
+            <option value="quarter">Este Trimestre</option>
+            <option value="year">Este Ano</option>
+            <option value="all">Todo Período</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="App.exportFinance()"><i class="fas fa-download"></i> Exportar</button>
+        </div>
+      </div>
+      <div class="dashboard-grid" id="finCards"></div>
+      <div class="card" style="margin-bottom:16px"><h4 style="margin-bottom:12px"><i class="fas fa-chart-bar"></i> Fluxo Financeiro</h4>
+      <canvas id="financeChart" style="height:250px"></canvas></div>
+      <div class="card"><h4 style="margin-bottom:12px"><i class="fas fa-list"></i> Transações</h4><div id="transactionList"></div></div></div>
+      <div class="page" id="page-contracts"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-file-signature"></i> Contratos</h2>
+        <select id="contractFilter" onchange="App.renderContracts()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="all">Todos</option><option value="active">Ativos</option><option value="expiring">Vencendo</option></select>
+        <button class="btn btn-primary btn-sm" onclick="App.openContractModal()"><i class="fas fa-plus"></i> Novo Contrato</button>
+      </div>
+      <div class="card"><div id="contractList"></div></div></div>
+      <div class="page" id="page-services"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-clipboard-list"></i> Ordens de Serviço</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="App.openSOModal()"><i class="fas fa-plus"></i> Nova OS</button>
+          <select id="soFilter" onchange="App.renderSO()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="all">Todas</option><option value="active">Em Andamento</option><option value="pending">Pendentes</option><option value="completed">Concluídas</option></select>
+          <button class="btn btn-outline btn-sm" onclick="App.exportSOExcel()"><i class="fas fa-file-excel"></i> Exportar</button>
+        </div>
+      </div>
+      <div class="card"><div id="soList"></div></div></div>
+      <div class="page" id="page-marketing"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-ad"></i> Marketing</h2>
+        <button class="btn btn-outline btn-sm" onclick="App.loadClientManagement()" style="margin-left:auto"><i class="fas fa-user-tie"></i> Gerenciar Clientes</button>
+      </div>
+      <div class="card"><div id="marketingContent"></div></div></div>
+      <div class="page" id="page-kanban"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-columns"></i> Kanban</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="kanbanProjectFilter" onchange="App.renderKanban()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="">Todos os projetos</option></select>
+          <select id="kanbanMemberFilter" onchange="App.renderKanban()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="">Todos os membros</option></select>
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto"><div id="kanbanBoard" style="display:flex;gap:16px;min-height:200px"></div></div></div>
+      <div class="page" id="page-team"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-user-friends"></i> Equipe</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openUserModal()"><i class="fas fa-plus"></i> Novo Membro</button>
+      </div>
+      <div class="card"><div id="teamList"></div></div></div>
+      <div class="page" id="page-settings"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-cog"></i> Configurações</h2>
+      </div>
+      <div id="settingsContent"><div class="settings-grid" id="settingsGrid"></div></div></div>
+      <div class="page" id="page-systems"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-globe"></i> Sistemas</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openSystemModal()"><i class="fas fa-plus"></i> Novo Sistema</button>
+      </div>
+      <div class="card"><div id="systemList"></div></div></div>
+      <div class="page" id="page-developments"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-building"></i> Empreendimentos</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openDevModal()"><i class="fas fa-plus"></i> Novo Empreendimento</button>
+      </div>
+      <div class="card"><div id="devList"></div></div></div>
+      <div class="page" id="page-design"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-paint-brush"></i> Projetos Criativos</h2>
+        <button class="btn btn-primary btn-sm" onclick="App.openDesignModal()"><i class="fas fa-plus"></i> Novo Projeto</button>
+      </div>
+      <div class="card"><div id="designList"></div></div></div>
+      <div class="page" id="page-timeline"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-stream"></i> Linha do Tempo</h2>
+        <button class="btn btn-outline btn-sm" onclick="App.refreshTimeline()"><i class="fas fa-sync"></i> Atualizar</button>
+      </div>
+      <div id="timelineContent"><div id="timelineDesignSelector"></div><div id="timelineList"></div></div></div>
+      <div class="page" id="page-reports"><div class="page-header">
+        <h2 class="page-title"><i class="fas fa-chart-line"></i> Relatórios</h2>
+        <button class="btn btn-outline btn-sm" onclick="App.exportReportPDF()"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+      </div>
+      <div class="card"><div id="reportsContent"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+
+<div class="modal-overlay" id="leadModal"><div class="modal">
+  <h3><i class="fas fa-funnel-dollar"></i> <span id="leadModalTitle">Novo Lead</span></h3>
+  <input type="hidden" id="leadId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome</label><input type="text" id="leadName" placeholder="Nome completo"></div>
+    <div class="form-group"><label>E-mail</label><input type="email" id="leadEmail" placeholder="email@exemplo.com"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="leadPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="leadCompany" placeholder="Nome da empresa"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Origem</label><select id="leadSource"><option value="website">Site</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="google">Google</option><option value="indicacao">Indicacao</option><option value="whatsapp">WhatsApp</option><option value="outros">Outros</option></select></div>
+    <div class="form-group"><label>Status</label><select id="leadStatus"><option value="novo">Novo</option><option value="contato">Contato</option><option value="qualificado">Qualificado</option><option value="proposta">Proposta</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor Potencial (R$)</label><input type="number" id="leadValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Responsavel</label><select id="leadAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="form-group"><label>Observações</label><textarea id="leadNotes" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('leadModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveLead()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="clientModal"><div class="modal">
+  <h3><i class="fas fa-user"></i> <span id="clientModalTitle">Novo Cliente</span></h3>
+  <input type="hidden" id="clientId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome</label><input type="text" id="clientName" placeholder="Nome completo"></div>
+    <div class="form-group"><label>E-mail</label><input type="email" id="clientEmail" placeholder="email@exemplo.com"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="clientPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Empresa</label><input type="text" id="clientCompany" placeholder="Nome da empresa"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="clientStatus"><option value="active">Ativo</option><option value="inactive">Inativo</option></select></div>
+    <div class="form-group"><label>Tags</label><input type="text" id="clientTags" placeholder="ex: premium, vip, recorrente"></div>
+  </div>
+  <div class="form-group"><label>Observações</label><textarea id="clientNotes" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('clientModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveClient()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="projectModal"><div class="modal">
+  <h3><i class="fas fa-tasks"></i> <span id="projectModalTitle">Novo Projeto</span></h3>
+  <input type="hidden" id="projectId">
+  <div class="form-group"><label>Nome do Projeto</label><input type="text" id="projectName" placeholder="Nome do projeto"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="projectClient"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Tipo</label><select id="projectType"><option value="Social Media">Social Media</option><option value="Trafego Pago">Trafego Pago</option><option value="Design Grafico">Design Grafico</option><option value="Desenvolvimento Web">Desenvolvimento Web</option><option value="Marketing de Conteudo">Marketing de Conteudo</option><option value="Consultoria">Consultoria</option><option value="E-mail Marketing">E-mail Marketing</option><option value="SEO">SEO</option><option value="Video/Edicao">Video/Edicao</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="projectStatus"><option value="pending">Pendente</option><option value="active" selected>Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select></div>
+    <div class="form-group"><label>Prazo</label><input type="date" id="projectDeadline"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor (R$)</label><input type="number" id="projectValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>% Comissao</label><input type="number" id="projectCommission" placeholder="10" min="0" max="100" value="0"></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="projectDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('projectModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveProject()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="systemModal"><div class="modal">
+  <h3><i class="fas fa-globe"></i> <span id="systemModalTitle">Novo Sistema</span></h3>
+  <input type="hidden" id="systemId">
+  <div class="form-row">
+    <div class="form-group"><label>Nome do Sistema</label><input type="text" id="systemName" placeholder="Ex: Portal Tech Solutions"></div>
+    <div class="form-group"><label>Cliente</label><select id="systemClient"><option value="">Selecione</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Slug (URL)</label><input type="text" id="systemSlug" placeholder="tech-solutions"></div>
+    <div class="form-group"><label>Senha do Portal</label><input type="text" id="systemPassword" placeholder="1234" value="1234"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Senha Admin</label><input type="text" id="systemAdminPassword" placeholder="Senha do painel admin" value=""></div>
+    <div class="form-group"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cor Primaria</label><input type="color" id="systemColor" value="#6C5CE7" style="width:100%;height:40px;padding:4px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer"></div>
+    <div class="form-group"><label>Logo URL</label><input type="text" id="systemLogo" placeholder="https://..."></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('systemModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSystem()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="soModal"><div class="modal">
+  <h3><i class="fas fa-clipboard-list"></i> <span id="soModalTitle">Nova Ordem de serviço</span></h3>
+  <input type="hidden" id="soId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="soTitle" placeholder="Titulo da OS"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Projeto</label><select id="soProject"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Prioridade</label><select id="soPriority"><option value="baixa">Baixa</option><option value="media" selected>Media</option><option value="alta">Alta</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="soStatus"><option value="pending">Pendente</option><option value="active" selected>Em Andamento</option><option value="completed">Concluido</option><option value="atrasado">Atrasado</option></select></div>
+    <div class="form-group"><label>Responsavel</label><select id="soAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Prazo</label><input type="date" id="soDeadline"></div>
+    <div class="form-group"><label>Horas Estimadas</label><input type="number" id="soHours" placeholder="0" min="0" step="0.5"></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="soDesc" rows="2"></textarea></div>
+  <div id="soTasks"><div style="font-size:13px;color:var(--text-muted);margin-bottom:8px"><i class="fas fa-tasks"></i> Subtarefas</div><div id="soTasksList"></div><button class="btn btn-xs btn-outline" onclick="App.addTaskField()"><i class="fas fa-plus"></i> Adicionar tarefa</button></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('soModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSO()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="contractModal"><div class="modal">
+  <h3><i class="fas fa-file-signature"></i> <span id="contractModalTitle">Novo Contrato</span></h3>
+  <input type="hidden" id="contractId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="contractTitle" placeholder="Titulo do contrato"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="contractClient"><option value="">Selecione</option></select></div>
+    <div class="form-group"><label>Valor Mensal (R$)</label><input type="number" id="contractValue" placeholder="0,00" min="0" step="0.01"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Data Inicio</label><input type="date" id="contractStart"></div>
+    <div class="form-group"><label>Data Fim</label><input type="date" id="contractEnd"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo Renovacao</label><select id="contractRenewal"><option value="monthly">Mensal</option><option value="quarterly">Trimestral</option><option value="semiannual">Semestral</option><option value="annual">Anual</option><option value="none">Sem renovacao</option></select></div>
+    <div class="form-group"><label>Status</label><select id="contractStatus"><option value="active">Ativo</option><option value="expired">Expirado</option><option value="cancelled">Cancelado</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="contractDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('contractModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveContract()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="transactionModal"><div class="modal">
+  <h3><i class="fas fa-dollar-sign"></i> <span id="transModalTitle">Nova Transacao</span></h3>
+  <input type="hidden" id="transactionId">
+  <div class="form-group"><label>Descricao</label><input type="text" id="transDesc" placeholder="Descricao"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo</label><select id="transType"><option value="income">Receita</option><option value="expense">Despesa</option></select></div>
+    <div class="form-group"><label>Categoria</label><select id="transCategory"><option value="Mensalidade">Mensalidade</option><option value="Projeto">Projeto</option><option value="Anuncios">Anuncios</option><option value="Ferramentas">Ferramentas</option><option value="Freelancer">Freelancer</option><option value="Hospedagem">Hospedagem</option><option value="Salarios">Salarios</option><option value="Marketing">Marketing</option><option value="Outros">Outros</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor (R$)</label><input type="number" id="transValue" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Data</label><input type="date" id="transDate"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Metodo Pagamento</label><select id="transMethod"><option value="">Selecione</option><option value="pix">Pix</option><option value="boleto">Boleto</option><option value="credito">Cartao Credito</option><option value="debito">Cartao Debito</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferencia</option></select></div>
+    <div class="form-group"><label>Status</label><select id="transStatus"><option value="completed">Pago</option><option value="pending">Pendente</option><option value="cancelled">Cancelado</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><select id="transClient"><option value="">Nenhum</option></select></div>
+    <div class="form-group"><label>Projeto</label><select id="transProject"><option value="">Nenhum</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('transactionModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTransaction()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="eventModal"><div class="modal">
+  <h3><i class="fas fa-calendar-plus"></i> <span id="eventModalTitle">Novo Evento</span></h3>
+  <input type="hidden" id="eventId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="eventTitle" placeholder="Titulo do evento"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Data</label><input type="date" id="eventDate"></div>
+    <div class="form-group"><label>Horario</label><input type="time" id="eventTime"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Tipo</label><select id="eventType"><option value="evento">Evento</option><option value="reuniao">Reuniao</option><option value="prazo">Prazo</option><option value="aniversario">Aniversario</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="eventDesc" rows="2"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('eventModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveEvent()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="userModal"><div class="modal">
+  <h3><i class="fas fa-user-plus"></i> <span id="userModalTitle">Novo Membro</span></h3>
+  <input type="hidden" id="userId">
+  <div class="form-group"><label>Nome</label><input type="text" id="userNameInput" placeholder="Nome completo"></div>
+  <div class="form-group"><label>E-mail</label><input type="email" id="userEmailInput" placeholder="email@promake.com"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Telefone</label><input type="text" id="userPhone" placeholder="(11) 99999-9999"></div>
+    <div class="form-group"><label>Cargo</label><select id="userRole"><option value="admin">Administrador</option><option value="manager">Gerente</option><option value="broker">Corretor</option><option value="designer">Designer</option><option value="developer">Desenvolvedor</option><option value="marketing">Marketing</option><option value="intern">Estagiario</option><option value="art_director">Diretor de Arte</option><option value="digital_strategist">Estrategista Digital</option><option value="freelancer">Freelancer</option><option value="filmmaker">Filmmaker</option><option value="fotografo">Fotógrafo</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Senha</label><input type="password" id="userPassword" placeholder="Deixe em branco para 123456"></div>
+    <div class="form-group"><label>Status</label><select id="userActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('userModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveUser()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="waTemplateModal"><div class="modal">
+  <h3><i class="fas fa-file-alt"></i> <span id="waTemplateModalTitle">Novo Template</span></h3>
+  <input type="hidden" id="waTemplateId">
+  <div class="form-group"><label>Nome do Template</label><input type="text" id="waTemplateName" placeholder="Ex: Acompanhamento lead" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="form-group"><label>Conteudo da Mensagem</label><textarea id="waTemplateContent" rows="4" placeholder="Ola, tudo bem? Gostariamos de saber seu feedback..." style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:vertical"></textarea></div>
+  <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Use <code>{{nome}}</code> para personalizar com o nome do lead/cliente.</p>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('waTemplateModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveWATemplate()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="planModal"><div class="modal" style="width:550px">
+  <h3><i class="fas fa-box"></i> <span id="planModalTitle">Novo Plano</span></h3>
+  <input type="hidden" id="planId">
+  <div class="form-group"><label>Nome do Plano</label><input type="text" id="planName" placeholder="Ex: Basico"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Preco (R$)</label><input type="number" id="planPrice" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Ciclo de Cobranca</label><select id="planBilling"><option value="monthly">Mensal</option><option value="quarterly">Trimestral</option><option value="semiannual">Semestral</option><option value="annual">Anual</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="planActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+  </div>
+  <div class="form-group"><label>Descricao</label><textarea id="planDesc" rows="2" placeholder="Descricao do plano"></textarea></div>
+  <div class="form-group"><label>Funcionalidades (uma por linha)</label><textarea id="planFeatures" rows="4" placeholder="8 posts por mes&#10;Relatorio mensal&#10;Suporte via WhatsApp"></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('planModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.savePlan()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="clientPlanModal"><div class="modal" style="width:450px">
+  <h3><i class="fas fa-box"></i> Vincular Plano ao Cliente</h3>
+  <input type="hidden" id="clientPlanClientId">
+  <div class="form-group"><label>Plano</label><select id="clientPlanSelect" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="">Selecione</option></select></div>
+  <div class="form-group"><label>Data de Inicio</label><input type="date" id="clientPlanStartDate" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('clientPlanModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveClientPlan()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="settingsModal"><div class="modal" id="settingsModalContent"></div></div>
+<div class="notif-overlay" id="notifOverlay" onclick="App.closeNotifications()"></div>
+<div class="modal" id="notifPanel" style="display:none;position:fixed;top:70px;right:20px;width:380px;max-width:95%;z-index:999;padding:0;max-height:500px;overflow-y:auto">
+  <div style="padding:20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <h4 style="margin:0;font-size:16px">Notificações</h4>
+    <button class="btn btn-xs btn-outline" onclick="App.markAllRead()">Marcar lidas</button>
+  </div>
+  <div id="notifList" style="padding:8px"></div>
+</div>
+
+<div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--bg-card);border-top:1px solid var(--border);padding:16px 24px;box-shadow:0 -4px 20px rgba(0,0,0,0.3);animation:fadeIn .3s">
+  <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px;font-size:13px;color:var(--text)">
+      <i class="fas fa-cookie-bite" style="color:var(--primary);margin-right:8px"></i>
+      Este sistema utiliza cookies apenas para melhorar sua experiência. Nenhum dado pessoal é coletado sem seu consentimento.
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-xs btn-outline" onclick="App.showPrivacyPolicy()"><i class="fas fa-shield-alt"></i> Política</button>
+      <button class="btn btn-xs btn-outline" onclick="App.cookieConsent(false)">Recusar</button>
+      <button class="btn btn-primary btn-xs" onclick="App.cookieConsent(true)"><i class="fas fa-check"></i> Aceitar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="taskModal"><div class="modal">
+  <h3><i class="fas fa-tasks"></i> <span id="taskModalTitle">Nova Tarefa</span></h3>
+  <input type="hidden" id="taskId">
+  <input type="hidden" id="taskSOId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="taskTitle" placeholder="Nome da tarefa" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="taskStatus" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="pending">Pendente</option><option value="active">Em Andamento</option><option value="completed">Concluida</option></select></div>
+    <div class="form-group"><label>Prazo</label><input type="date" id="taskDeadline" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  </div>
+  <div class="form-group"><label>Responsavel</label><select id="taskAssigned" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"><option value="">Nao definido</option></select></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('taskModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTask()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="confirmModal"><div class="modal" style="width:420px;text-align:center">
+  <div style="margin-bottom:16px"><i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--warning);opacity:0.8"></i></div>
+  <h3 style="margin-bottom:24px;justify-content:center" id="confirmTitle">Tem certeza?</h3>
+  <div class="modal-actions" style="justify-content:center">
+    <button class="btn btn-outline btn-sm" id="confirmCancelBtn" onclick="App.closeConfirm()">Cancelar</button>
+    <button class="btn btn-danger btn-sm" id="confirmOkBtn" onclick="App.confirmOk()"><i class="fas fa-trash"></i> Confirmar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="filesModal"><div class="modal">
+  <h3><i class="fas fa-folder-open"></i> <span id="filesModalTitle">Arquivos</span></h3>
+  <div id="filesModalBody"></div>
+  <div class="modal-actions">
+    <button class="btn btn-primary btn-sm" onclick="App.closeModal('filesModal')">Fechar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="permModal"><div class="modal" style="max-width:600px">
+  <div class="modal-header" id="permModalTitle"><i class="fas fa-shield-alt"></i> Gerenciar Permissões</div>
+  <div class="modal-body">
+    <input type="hidden" id="permUserId">
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:8px">Membro: <strong id="permUserName"></strong></label>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-chart-pie" style="width:16px"></i> Dashboard</label>
+        <select id="perm-dashboard" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-funnel-dollar" style="width:16px"></i> CRM / Leads</label>
+        <select id="perm-leads" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-users" style="width:16px"></i> Clientes</label>
+        <select id="perm-clients" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-tasks" style="width:16px"></i> Projetos</label>
+        <select id="perm-projects" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-columns" style="width:16px"></i> Kanban</label>
+        <select id="perm-kanban" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-clipboard-list" style="width:16px"></i> Ordem de Serviço</label>
+        <select id="perm-services" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-file-signature" style="width:16px"></i> Contratos</label>
+        <select id="perm-contracts" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-dollar-sign" style="width:16px"></i> Financeiro</label>
+        <select id="perm-finance" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-ad" style="width:16px"></i> Marketing</label>
+        <select id="perm-marketing" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-calendar" style="width:16px"></i> Calendário</label>
+        <select id="perm-calendar" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-chart-bar" style="width:16px"></i> Relatórios</label>
+        <select id="perm-reports" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-user-friends" style="width:16px"></i> Equipe</label>
+        <select id="perm-team" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label><i class="fas fa-building" style="width:16px"></i> Empreendimentos</label>
+        <select id="perm-developments" class="perm-select"><option value="none">Sem acesso</option><option value="view">Visualizar</option><option value="all">Total</option></select>
+      </div>
+      <div class="form-group"></div>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('permModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.savePermissions()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="devModal"><div class="modal" style="max-width:600px">
+  <h3><i class="fas fa-building"></i> <span id="devModalTitle">Novo Empreendimento</span></h3>
+  <input type="hidden" id="devId">
+  <div class="form-group"><label>Nome do Empreendimento</label><input type="text" id="devName" placeholder="Ex: Residencial Solar"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Construtora</label><input type="text" id="devBuilder" placeholder="MARSAN"></div>
+    <div class="form-group"><label>Status</label><select id="devStatus"><option value="lançamento">Lançamento</option><option value="obras">Em Obras</option><option value="pronto">Pronto</option></select></div>
+  </div>
+  <div class="form-group"><label>Endereço</label><input type="text" id="devAddress" placeholder="Av. Principal, 1000"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Total de Unidades</label><input type="number" id="devTotalUnits" placeholder="0"></div>
+    <div class="form-group"><label>Previsão de Entrega</label><input type="date" id="devDeliveryDate"></div>
+  </div>
+  <div class="form-group"><label>Descrição</label><textarea id="devDescription" rows="3" placeholder="Descrição do empreendimento..."></textarea></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('devModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveDevelopment()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="unitModal"><div class="modal" style="max-width:600px">
+  <h3><i class="fas fa-door-open"></i> <span id="unitModalTitle">Nova Unidade</span></h3>
+  <input type="hidden" id="unitId">
+  <div class="form-row">
+    <div class="form-group"><label>Unidade</label><input type="text" id="unitNumber" placeholder="Ex: 101, APT 42"></div>
+    <div class="form-group"><label>Torre</label><input type="text" id="unitTower" placeholder="Ex: A, B, 1"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Bloco</label><input type="text" id="unitBlock" placeholder="Ex: 1, 2"></div>
+    <div class="form-group"><label>Andar</label><input type="text" id="unitFloor" placeholder="Ex: 1, 2, Térreo"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Área (m²)</label><input type="number" id="unitArea" step="0.01" placeholder="0"></div>
+    <div class="form-group"><label>Preço (R$)</label><input type="number" id="unitPrice" step="0.01" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Quartos</label><input type="number" id="unitBedrooms" placeholder="0"></div>
+    <div class="form-group"><label>Suítes</label><input type="number" id="unitSuites" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Banheiros</label><input type="number" id="unitBathrooms" placeholder="0"></div>
+    <div class="form-group"><label>Vagas</label><input type="number" id="unitParking" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="unitStatus"><option value="disponivel">Disponível</option><option value="reservado">Reservado</option><option value="vendido">Vendido</option></select></div>
+    <div class="form-group"><label>Observações</label><input type="text" id="unitNotes" placeholder="Opcional"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('unitModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveUnit()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="brokerDevModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-user-plus"></i> Liberar Corretor</h3>
+  <input type="hidden" id="brokerDevId">
+  <div class="form-group"><label>Corretor</label><select id="brokerDevUser" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></select></div>
+  <div class="form-group"><label>Comissão (%)</label><input type="number" id="brokerDevPct" step="0.1" value="3.0" style="width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px"></div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('brokerDevModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveBrokerDev()"><i class="fas fa-check"></i> Liberar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="privacyModal"><div class="modal" style="max-width:700px">
+  <h3><i class="fas fa-shield-alt"></i> Política de Privacidade</h3>
+  <div style="font-size:13px;line-height:1.7;color:var(--text);max-height:400px;overflow-y:auto;padding-right:8px">
+    <p><strong>Promake Ecosystem</strong> valoriza sua privacidade. Esta política descreve como tratamos seus dados.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">1. Dados Coletados</h4>
+    <p>Coletamos apenas dados fornecidos voluntariamente: nome, email, telefone, empresa e informações de projetos inseridos no sistema.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">2. Cookies</h4>
+    <p>Utilizamos cookies essenciais para manter sua sessão ativa (token de autenticação) e preferências de interface (tema, idioma). Não usamos cookies de rastreamento ou publicidade.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">3. Armazenamento</h4>
+    <p>Seus dados são armazenados localmente em banco SQLite no próprio servidor. Não compartilhamos dados com terceiros.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">4. Segurança</h4>
+    <p>As sessões são protegidas por autenticação via token. Recomendamos o uso de senhas fortes.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">5. Seus Direitos</h4>
+    <p>Você pode solicitar a exclusão dos seus dados a qualquer momento entrando em contato com o administrador do sistema.</p>
+    <h4 style="margin:12px 0 4px;color:var(--primary)">6. Contato</h4>
+    <p>Dúvidas sobre esta política: admin@promake.com</p>
+    <p style="margin-top:16px;font-size:11px;color:var(--text-muted)">Última atualização: Maio 2026</p>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-primary btn-sm" onclick="App.closeModal('privacyModal')">Fechar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="slideModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-images"></i> <span id="slideModalTitle">Novo Slide</span></h3>
+  <input type="hidden" id="slideId">
+  <div class="form-group">
+    <label>Imagem</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="slideImage" placeholder="nome-do-arquivo.jpg" style="flex:1">
+      <button class="btn btn-outline btn-sm" onclick="App.uploadSlideImage()" style="white-space:nowrap"><i class="fas fa-upload"></i> Enviar</button>
+    </div>
+    <div id="slidePreview" style="margin-top:8px;border:1px dashed var(--border);border-radius:8px;min-height:60px;display:flex;align-items:center;justify-content:center"></div>
+  </div>
+  <div class="form-group"><label>Título</label><input type="text" id="slideTitle" placeholder="Título principal do slide"></div>
+  <div class="form-group"><label>Subtítulo</label><textarea id="slideSubtitle" rows="2" placeholder="Descrição que aparece abaixo do título"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Badge (texto)</label><input type="text" id="slideBadge" placeholder="Ex: Novo!"></div>
+    <div class="form-group"><label>Ordem</label><input type="number" id="slideOrder" value="0" min="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Texto do Botão 1</label><input type="text" id="slideLinkText" value="Acessar Agora"></div>
+    <div class="form-group"><label>Link Botão 1 (opcional)</label><input type="text" id="slideLinkUrl" placeholder="https://..."></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Texto Botão 2 (opcional)</label><input type="text" id="slideBtn2Text" placeholder="Ex: Saiba Mais"></div>
+    <div class="form-group"><label>Link Botão 2</label><input type="text" id="slideBtn2Url" placeholder="https://..."></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="slideActive"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+    <div class="form-group"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('slideModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveSlide()"><i class="fas fa-check"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="designModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-paint-brush"></i> <span id="designModalTitle">Novo Projeto Criativo</span></h3>
+  <input type="hidden" id="designId">
+  <div class="form-group"><label>Nome do Projeto</label><input type="text" id="designName" placeholder="Ex: Campanha Redes Sociais"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="designDesc" rows="2" placeholder="Descrição do projeto"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><input type="text" id="designClient" placeholder="Nome do cliente"></div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="designDeadline"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('designModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveDesign()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="cardModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-sticky-note"></i> <span id="cardModalTitle">Novo Card</span></h3>
+  <input type="hidden" id="cardId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="cardTitle" placeholder="Ex: Criar arte para feed"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="cardDesc" rows="2" placeholder="Detalhes da tarefa"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Fase</label><select id="cardStage"><option value="briefing">Briefing</option><option value="criacao">Criação</option><option value="revisao">Revisão</option><option value="aprovacao">Aprovação</option><option value="finalizado">Finalizado</option></select></div>
+    <div class="form-group"><label>Cor</label><select id="cardColor"><option value="">Nenhuma</option><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF1744">Vermelho</option><option value="#FF9800">Laranja</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Responsavel</label><input type="text" id="cardAssigned" placeholder="Nome do responsavel"></div>
+    <div class="form-group"><label>Deadline</label><input type="date" id="cardDeadline"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('cardModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveCard()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="stageModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-layer-group"></i> <span id="stageModalTitle">Nova Etapa</span></h3>
+  <input type="hidden" id="stageId">
+  <div class="form-group"><label>Nome da Etapa</label><input type="text" id="stageTitle" placeholder="Ex: Identidade Visual"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="stageDesc" rows="2" placeholder="Descricao da etapa"></textarea></div>
+  <div class="form-group"><label>Cor</label><select id="stageColor"><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF9800">Laranja</option><option value="#FF1744">Vermelho</option></select></div>
+  <div class="form-group"><label>Imagens</label>
+    <div id="stageImages" class="image-grid"></div>
+    <input type="file" id="stageImageInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="App._handleImageUpload('stage',document.getElementById('stageId').value,this)">
+    <button class="btn btn-xs btn-outline" onclick="document.getElementById('stageImageInput').click()"><i class="fas fa-image"></i> Adicionar Imagem</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('stageModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveStage()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="timelineItemModal"><div class="modal" style="max-width:500px">
+  <h3><i class="fas fa-file-alt"></i> <span id="timelineItemModalTitle">Novo Item</span></h3>
+  <input type="hidden" id="timelineItemId">
+  <input type="hidden" id="timelineItemStageId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="timelineItemTitle" placeholder="Ex: Logo"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="timelineItemDesc" rows="2" placeholder="Detalhes do item"></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Status</label><select id="timelineItemStatus" onchange="App._updateStatusIndicator()"><option value="pendente">Pendente</option><option value="em_andamento">Em Andamento</option><option value="concluido">Concluido</option></select></div>
+    <div class="form-group"><label>Cor</label><select id="timelineItemColor"><option value="">Nenhuma</option><option value="#6C5CE7">Roxo</option><option value="#00B0FF">Azul</option><option value="#00C853">Verde</option><option value="#FFD600">Amarelo</option><option value="#FF1744">Vermelho</option></select></div>
+  </div>
+  <div id="statusIndicator" style="text-align:center;padding:8px 0;font-size:28px;min-height:48px"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Responsavel</label><input type="text" id="timelineItemAssigned" placeholder="Nome do responsavel"></div>
+    <div class="form-group"><label>Link/URL</label><input type="text" id="timelineItemUrl" placeholder="https://..."></div>
+  </div>
+  <div class="form-group"><label>Imagens</label>
+    <div id="timelineItemImages" class="image-grid"></div>
+    <input type="file" id="timelineItemImageInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="App._handleImageUpload('timeline_item',document.getElementById('timelineItemId').value,this)">
+    <button class="btn btn-xs btn-outline" onclick="document.getElementById('timelineItemImageInput').click()"><i class="fas fa-image"></i> Adicionar Imagem</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('timelineItemModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveTimelineItem()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="festefeModal"><div class="modal" style="max-width:550px">
+  <h3><i class="fas fa-ticket-alt"></i> <span id="festefeModalTitle">Novo Chamado</span></h3>
+  <input type="hidden" id="festefeId">
+  <div class="form-group"><label>Titulo</label><input type="text" id="festefeTitle" placeholder="Ex: Solicitação de arte"></div>
+  <div class="form-group"><label>Descrição</label><textarea id="festefeDesc" rows="3" placeholder="Descreva o chamado em detalhes..."></textarea></div>
+  <div class="form-row">
+    <div class="form-group"><label>Prioridade</label><select id="festefePriority"><option value="baixa">Baixa</option><option value="media" selected>Media</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+    <div class="form-group"><label>Categoria</label><select id="festefeCategory"><option value="">Selecione</option><option value="design">Design</option><option value="social_media">Social Media</option><option value="web">Web</option><option value="video">Video</option><option value="impresso">Impresso</option><option value="identidade_visual">Identidade Visual</option><option value="outro">Outro</option></select></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Cliente</label><input type="text" id="festefeClient" placeholder="Nome do cliente"></div>
+    <div class="form-group"><label>Responsavel</label><select id="festefeAssigned"><option value="">Nao definido</option></select></div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-outline btn-sm" onclick="App.closeModal('festefeModal')">Cancelar</button>
+    <button class="btn btn-primary btn-sm" onclick="App.saveFestefe()"><i class="fas fa-save"></i> Salvar</button>
+  </div>
+</div></div>
+
+<div id="musicPlayer" class="music-player minimized">
+  <div class="music-header" onclick="App.toggleMusicPlayer()">
+    <i class="fas fa-music"></i>
+    <span class="music-header-title">Player</span>
+    <span id="musicNowPlaying" class="music-now-playing"></span>
+    <span class="music-header-toggle"><i class="fas fa-chevron-up"></i></span>
+    <span class="music-close" onclick="event.stopPropagation();App.closeMusicPlayer()"><i class="fas fa-times"></i></span>
+  </div>
+  <div class="music-body">
+    <div class="music-source-tabs">
+      <button class="music-source-tab active" data-source="local" onclick="App.switchMusicSource('local')"><i class="fas fa-folder"></i> Local</button>
+      <button class="music-source-tab" data-source="youtube" onclick="App.switchMusicSource('youtube')"><i class="fab fa-youtube"></i> YouTube</button>
+      <button class="music-source-tab" data-source="spotify" onclick="App.switchMusicSource('spotify')"><i class="fab fa-spotify"></i> Spotify</button>
+    </div>
+    <div class="music-source-panels">
+      <div class="music-source-panel active" id="musicSourceLocal">
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('localFileInput').click()" style="width:100%;margin-bottom:6px">
+          <i class="fas fa-folder-open"></i> Escolher arquivos
+        </button>
+        <input type="file" id="localFileInput" accept="audio/*" multiple hidden onchange="App.loadLocalFiles(this.files)">
+        <div class="music-playlist" id="localPlaylist"></div>
+      </div>
+      <div class="music-source-panel" id="musicSourceYoutube">
+        <div class="music-url-row">
+          <input type="text" id="ytSearchInput" placeholder="Buscar música ou colar URL do YouTube..." class="music-url-input" onkeydown="if(event.key==='Enter')App.searchYouTube()">
+          <button class="btn btn-sm btn-primary" onclick="App.searchYouTube()" title="Buscar"><i class="fas fa-search"></i></button>
+        </div>
+        <div class="music-yt-results" id="musicYtResults"></div>
+        <div class="music-yt-active" id="musicYtActive" style="display:none">
+          <div class="music-yt-viewer" id="musicYtViewer" style="display:none">
+            <div class="yt-resize-handle" id="ytResizeHandle"></div>
+          </div>
+          <div class="music-yt-info-bar">
+            <span class="music-yt-title" id="musicYtTitle"></span>
+            <div class="music-yt-mode-toggle">
+              <button class="yt-mode-btn active" data-mode="audio" onclick="App.setYTMode('audio')" title="Somente áudio"><i class="fas fa-headphones"></i></button>
+              <button class="yt-mode-btn" data-mode="video" onclick="App.setYTMode('video')" title="Exibir vídeo"><i class="fas fa-tv"></i></button>
+              <button class="yt-mode-btn" id="ytExpandBtn" onclick="App.toggleYTMaximize()" title="Maximizar vídeo" style="display:none"><i class="fas fa-expand"></i></button>
+              <button class="yt-mode-btn" id="ytSaveCurrentBtn" onclick="App.saveCurrentYTToPlaylist()" title="Salvar vídeo na playlist" style="color:var(--primary)"><i class="fas fa-bookmark"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="music-yt-playlist-header">
+          <span><i class="fas fa-list"></i> Minha Playlist</span>
+          <span style="font-weight:400;font-size:11px" id="ytPlaylistCount">0</span>
+        </div>
+        <div class="music-yt-playlist" id="musicYtPlaylist"></div>
+      </div>
+      <div class="music-source-panel" id="musicSourceSpotify">
+        <div class="music-url-row" style="padding:4px 8px;gap:4px">
+          <input type="text" id="spotifyUrlInput" placeholder="URL do Spotify..." class="music-url-input" style="font-size:12px;padding:4px 8px" onkeydown="if(event.key==='Enter')App.loadSpotify()">
+          <button class="btn btn-sm btn-primary" onclick="App.loadSpotify()" title="Carregar" style="padding:4px 10px;font-size:12px"><i class="fas fa-arrow-right"></i></button>
+        </div>
+        <div id="spotifyPlayerDashboard" style="padding:8px">
+          <div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">Carregando Spotify...</div>
+        </div>
+        <div class="music-spotify-embed" id="spotifyEmbedContainer" style="display:none"></div>
+      </div>
+    </div>
+    <div class="music-controls">
+      <div class="music-track-info" id="musicTrackInfo"><i class="fas fa-music"></i> Nenhuma faixa</div>
+      <div class="music-progress-row">
+        <span class="music-time" id="musicTimeCurrent">0:00</span>
+        <input type="range" id="musicProgress" min="0" max="100" value="0" oninput="App.seekMusic(this.value)">
+        <span class="music-time" id="musicTimeTotal">0:00</span>
+      </div>
+      <div class="music-buttons">
+        <button class="music-btn" onclick="App.prevTrack()" title="Anterior"><i class="fas fa-step-backward"></i></button>
+        <button class="music-btn music-play-btn" onclick="App.togglePlay()" title="Play/Pause"><i class="fas fa-play" id="musicPlayIcon"></i></button>
+        <button class="music-btn" onclick="App.nextTrack()" title="Próximo"><i class="fas fa-step-forward"></i></button>
+        <div class="music-volume-wrap">
+          <i class="fas fa-volume-up music-vol-icon"></i>
+          <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="0.7" oninput="App.setVolume(this.value)">
+        </div>
+        <span class="music-source-label" id="musicSourceLabel"></span>
+      </div>
+    </div>
+  </div>
+  <div class="music-resize-n" data-rsz="n"></div>
+  <div class="music-resize-s" data-rsz="s"></div>
+  <div class="music-resize-e" data-rsz="e"></div>
+  <div class="music-resize-w" data-rsz="w"></div>
+  <div class="music-resize-ne" data-rsz="ne"></div>
+  <div class="music-resize-nw" data-rsz="nw"></div>
+  <div class="music-resize-se" data-rsz="se"></div>
+  <div class="music-resize-sw" data-rsz="sw"></div>
+</div>
+
+<audio id="musicAudioElement" hidden></audio>
+<div id="ytPlayerContainer" style="position:absolute;left:-9999px;top:0;width:358px;height:160px;pointer-events:none;opacity:0"></div>
