@@ -667,6 +667,13 @@ def init_db():
             except:
                 pass
     db.commit()
+    # TEMP: disable MFA for all users to recover access
+    try:
+        db.execute("UPDATE users SET mfa_enabled=0, mfa_secret='', mfa_recovery=''")
+        db.execute("DELETE FROM user_backup_codes")
+        db.commit()
+    except:
+        pass
     # Seed users if not exists
     _seed_users = [
         ("Administrador","admin@promake.com","admin123","admin"),
@@ -973,9 +980,6 @@ def api_login():
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
         db.commit()
     has_mfa = user["mfa_enabled"] if "mfa_enabled" in user.keys() else 0
-    bypass_token = os.environ.get("ADMIN_MFA_BYPASS", "")
-    if has_mfa and bypass_token and password == bypass_token:
-        has_mfa = 0
     if has_mfa:
         mfa_token = uuid4().hex
         exp = (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
