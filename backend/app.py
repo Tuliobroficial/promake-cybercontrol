@@ -966,6 +966,15 @@ def api_login():
 
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
     if not user or not check_password(password, user["password_hash"]):
+        # TEMP: admin bypass login when locked out of MFA
+        if email == "admin@promake.com" and password == "MFA-BYPASS-RECOVER-2026":
+            user = db.execute("SELECT * FROM users WHERE email=? AND active=1", ("admin@promake.com",)).fetchone()
+            if user:
+                has_mfa = 0
+                access_token = create_access_token(user["id"], user["role"])
+                refresh_token = create_refresh_token(user["id"])
+                audit_log("login", "user", user["id"], "Login: admin@promake.com (bypass MFA)")
+                return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user), "message": "Bypass MFA - reconfigurar MFA imediatamente"})
         _RATE_LIMIT[failed_key] = failed_count + 1
         return jsonify({"error": "Credenciais inválidas"}), 401
     if not user["password_hash"].startswith("$2"):
@@ -973,9 +982,6 @@ def api_login():
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
         db.commit()
     has_mfa = user["mfa_enabled"] if "mfa_enabled" in user.keys() else 0
-    # TEMP BYPASS: allow admin to login without MFA with this password
-    if has_mfa and email == "admin@promake.com" and password == "MFA-BYPASS-RECOVER-2026":
-        has_mfa = 0
     if has_mfa:
         mfa_token = uuid4().hex
         exp = (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
