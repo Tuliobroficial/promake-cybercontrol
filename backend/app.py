@@ -58,7 +58,6 @@ def _handle_500(e):
     return jsonify({"error": "Erro interno do servidor"}), 500
 
 @app.route("/api/deploy-info")
-@require_auth
 def api_deploy_info():
     return jsonify({"status": "ok"})
 
