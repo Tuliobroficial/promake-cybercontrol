@@ -950,17 +950,6 @@ def api_save_config():
 
 # ─── Auth Routes ─────────────────────────────
 
-@app.route("/api/reset-mfa", methods=["POST"])
-def api_reset_mfa_public():
-    token = (request.args.get("token") or request.headers.get("X-Reset-Token") or "").strip()
-    if token != "promake-reset-mfa-2026":
-        return jsonify({"error": "Token invalido"}), 403
-    db = get_db()
-    db.execute("UPDATE users SET mfa_enabled=0, mfa_secret='', mfa_recovery=''")
-    db.execute("DELETE FROM user_backup_codes")
-    db.commit()
-    return jsonify({"ok": True, "message": "MFA resetado para todos usuarios"})
-
 @app.route("/api/auth/login", methods=["POST"])
 @rate_limit
 @rate_limit_advanced(limit=10, per=60, key="login")
