@@ -1240,10 +1240,12 @@ def api_super_admin_security_events():
 @require_role("super_admin", "admin")
 def api_super_admin_sessions():
     db = get_db()
+    is_pg = bool(os.environ.get("DATABASE_URL"))
+    expires_cond = "CAST(rt.expires_at AS timestamp) > NOW()" if is_pg else "rt.expires_at > datetime('now','localtime')"
     rows = db.execute(
-        """SELECT rt.*, u.name, u.email, u.role
+        f"""SELECT rt.*, u.name, u.email, u.role
            FROM refresh_tokens rt JOIN users u ON rt.user_id = u.id
-           WHERE rt.revoked=0 AND rt.expires_at > datetime('now','localtime')
+           WHERE rt.revoked=0 AND {expires_cond}
            ORDER BY rt.created_at DESC LIMIT 100"""
     ).fetchall()
     return jsonify({"rows": rows_to_list(rows)})
@@ -1272,7 +1274,7 @@ def api_super_admin_revoke_session():
         return jsonify({"error": "Token obrigatorio"}), 400
     db = get_db()
     if token == "ALL":
-        db.execute("UPDATE refresh_tokens SET revoked=1")
+        db.execute("UPDATE refresh_tokens SET revoked=1 WHERE revoked=0")
         db.commit()
         audit_log("revoke_all_sessions", "session", None, "Todas as sessoes revogadas")
         return jsonify({"ok": True, "message": "Todas as sessoes foram revogadas"})
