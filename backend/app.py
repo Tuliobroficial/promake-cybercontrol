@@ -1677,6 +1677,11 @@ def api_team_member(uid):
         if k in data:
             fields.append(f"{k}=?")
             vals.append(data[k])
+    if cur["role"] == "super_admin":
+        for k in ("mfa_enabled", "mfa_secret", "mfa_recovery"):
+            if k in data:
+                fields.append(f"{k}=?")
+                vals.append(data[k])
     password = data.get("password", "")
     if password:
         fields.append("password_hash=?")
