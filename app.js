@@ -125,6 +125,8 @@ const App = {
     },
   },
   globeRunning: false,
+  _saTimer: null,
+  _saGlobeState: null,
   notifOpen: false,
   notifPrefs: null,
   calendarDate: new Date(),
@@ -6550,7 +6552,8 @@ const App = {
   // ─── Security Page (MFA Setup) ────────────
 
   async renderSecurity() {
-    const content = document.getElementById('app-content');
+    const content = document.querySelector('#page-security .app-content');
+    if (!content) return;
     const mfaStatus = await API.get('/api/auth/mfa/status');
     const rolesData = await API.get('/api/auth/roles');
     const mfaEnabled = mfaStatus?.mfa_enabled || false;
@@ -6661,8 +6664,17 @@ const App = {
 
   // ─── Super Admin Page ─────────────────────
 
-  async renderSuperAdmin() {
-    const content = document.getElementById('app-content');
+  async renderSuperAdmin(isRefresh) {
+    const content = document.querySelector('#page-super_admin .app-content');
+    if (!content) return;
+
+    // Se ja existe o globo e e um refresh, atualiza so os dados
+    const existingCanvas = document.getElementById('saGlobeCanvas');
+    if (existingCanvas && isRefresh) {
+      await this._saRefreshData();
+      return;
+    }
+
     content.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin" style="font-size:32px"></i><p>Carregando...</p></div>';
     const summary = await API.get('/api/super-admin/security-summary');
     const auditData = await API.get('/api/super-admin/audit-log?per_page=20');
@@ -6673,107 +6685,234 @@ const App = {
       content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)"><i class="fas fa-exclamation-triangle" style="font-size:32px"></i><p>Sem acesso ao Super Admin</p></div>';
       return;
     }
+    const attackCount = eventsData?.rows?.length || 0;
+    const recentAttacks = (eventsData?.rows || []).slice(0, 8);
     let html =
-      '<div style="max-width:1200px;margin:auto">' +
-      '<h2><i class="fas fa-user-shield"></i> Super Admin - Monitoramento</h2>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0">' +
-      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--primary)">' + (summary.total_users||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Usuarios</div></div>' +
-      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--success)">' + (summary.active_today||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Ativos Hoje</div></div>' +
-      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--danger)">' + (summary.failed_logins_24h||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Falhas Login (24h)</div></div>' +
-      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700;color:var(--warning)">' + (summary.mfa_enabled||0) + '</div><div style="font-size:12px;color:var(--text-muted)">MFA Ativo</div></div>' +
-      '<div class="card" style="padding:16px;text-align:center"><div style="font-size:28px;font-weight:700">' + (summary.active_refresh_tokens||0) + '</div><div style="font-size:12px;color:var(--text-muted)">Sessoes Ativas</div></div>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+      '<div style="max-width:1400px;margin:auto">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">' +
+      '<h2><i class="fas fa-user-shield" style="color:var(--primary)"></i> Super Admin - Monitoramento em Tempo Real</h2>' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+      '<span id="saStatusDot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--success);animation:pulseGlow 2s infinite"></span>' +
+      '<span style="font-size:12px;color:var(--text-muted)">Sistema operacional</span>' +
+      '<button id="saRefreshBtn" class="btn btn-sm btn-outline"><i class="fas fa-sync-alt"></i> Atualizar</button>' +
+      '</div></div>' +
 
-      '<!-- Block IP -->' +
-      '<div class="card" style="padding:16px">' +
-      '<h4><i class="fas fa-ban"></i> Bloquear IP</h4>' +
-      '<div style="display:flex;gap:8px;margin-top:8px">' +
-      '<input id="blockIpInput" type="text" placeholder="192.168.1.1" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text)"/>' +
+      '<!-- Cards animados -->' +
+      '<div class="sa-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0">' +
+      '<div class="card sa-card" style="padding:16px;text-align:center;border-left:3px solid var(--primary)"><div class="sa-card-value" style="font-size:28px;font-weight:700;color:var(--primary)">' + (summary.total_users||0) + '</div><div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-users"></i> Usuarios</div></div>' +
+      '<div class="card sa-card" style="padding:16px;text-align:center;border-left:3px solid var(--success)"><div class="sa-card-value" style="font-size:28px;font-weight:700;color:var(--success)">' + (summary.active_today||0) + '</div><div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-signal"></i> Ativos Hoje</div></div>' +
+      '<div class="card sa-card" style="padding:16px;text-align:center;border-left:3px solid var(--danger)"><div class="sa-card-value" style="font-size:28px;font-weight:700;color:var(--danger)">' + (summary.failed_logins_24h||0) + '</div><div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-exclamation-triangle"></i> Falhas Login (24h)</div></div>' +
+      '<div class="card sa-card" style="padding:16px;text-align:center;border-left:3px solid var(--warning)"><div class="sa-card-value" style="font-size:28px;font-weight:700;color:var(--warning)">' + (summary.mfa_enabled||0) + '</div><div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-shield-alt"></i> MFA Ativo</div></div>' +
+      '<div class="card sa-card" style="padding:16px;text-align:center;border-left:3px solid var(--info)"><div class="sa-card-value" style="font-size:28px;font-weight:700;color:var(--info)">' + (summary.active_refresh_tokens||0) + '</div><div style="font-size:12px;color:var(--text-muted)"><i class="fas fa-key"></i> Sessoes Ativas</div></div>' +
+      '</div>' +
+
+      '<!-- Globo + Stats -->' +
+      '<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">' +
+
+      '<!-- Globo Mapa Mundi -->' +
+      '<div class="card sa-card" style="padding:16px;position:relative;overflow:hidden">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<h4 style="margin:0"><i class="fas fa-globe-americas" style="color:var(--primary)"></i> Mapa de Ameaças</h4>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:11px;color:var(--text-muted)">' + attackCount + ' eventos</span>' +
+      '<button id="saZoomIn" class="btn btn-xs btn-outline" title="Zoom +"><i class="fas fa-plus"></i></button>' +
+      '<button id="saZoomOut" class="btn btn-xs btn-outline" title="Zoom -"><i class="fas fa-minus"></i></button>' +
+      '</div></div>' +
+      '<canvas id="saGlobeCanvas" width="600" height="400" style="width:100%;height:400px;border-radius:8px;background:radial-gradient(ellipse at center, rgba(15,15,26,0.5) 0%, rgba(15,15,26,0.9) 100%)"></canvas>' +
+      '<div id="saGlobeLegend" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text-muted);justify-content:center">' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);margin-right:4px"></span> Ataque ativo</span>' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warning);margin-right:4px"></span> Suspeito</span>' +
+      '<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:4px"></span> Normal</span>' +
+      '</div></div>' +
+
+      '<!-- Block IP + Eventos recentes -->' +
+      '<div style="display:flex;flex-direction:column;gap:16px">' +
+      '<div class="card sa-card" style="padding:16px">' +
+      '<h4 style="margin:0 0 8px"><i class="fas fa-ban" style="color:var(--danger)"></i> Bloquear IP</h4>' +
+      '<div style="display:flex;gap:8px">' +
+      '<input id="blockIpInput" type="text" placeholder="192.168.1.1" style="flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px"/>' +
       '<button id="blockIpBtn" class="btn btn-danger"><i class="fas fa-lock"></i> Bloquear</button>' +
       '</div>' +
-      '<p id="blockIpStatus" style="font-size:12px;color:var(--text-muted);margin-top:8px"></p>' +
+      '<p id="blockIpStatus" style="font-size:12px;color:var(--text-muted);margin-top:6px"></p>' +
       '</div>' +
 
-      '<!-- Security Events -->' +
-      '<div class="card" style="padding:16px">' +
-      '<h4><i class="fas fa-exclamation-triangle"></i> Eventos de Seguranca</h4>' +
-      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
-    if (eventsData?.rows?.length) {
-      html += eventsData.rows.slice(0,10).map(e =>
-        '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">' +
-        '<span style="color:var(--danger)">' + (e.event_type||'') + '</span>' +
-        '<span style="color:var(--text-muted)">' + (e.ip_address||'') + '</span>' +
-        '<span style="color:var(--text-muted);font-size:11px">' + (e.timestamp||'').slice(0,16) + '</span>' +
-        '</div>'
-      ).join('');
+      '<!-- Security Events (ataques) -->' +
+      '<div class="card sa-card sa-attack-pulse" style="padding:16px;flex:1">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<h4 style="margin:0"><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ultimos Ataques</h4>' +
+      '<span style="font-size:11px;color:var(--text-muted);background:rgba(255,23,68,0.1);padding:2px 8px;border-radius:10px">' + attackCount + ' total</span>' +
+      '</div>' +
+      '<div id="saEventsList" style="max-height:170px;overflow-y:auto">';
+    if (recentAttacks.length) {
+      html += recentAttacks.map((e, i) => {
+        const ipShort = (e.ip_address||'').split('.').slice(0,2).join('.') + '.x.x';
+        return '<div class="sa-attack-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+          '<span style="width:8px;height:8px;border-radius:50%;background:var(--danger);flex-shrink:0;animation:glowPulse 1.5s infinite"></span>' +
+          '<span style="color:var(--danger);font-weight:600;min-width:80px">' + (e.event_type||'') + '</span>' +
+          '<span style="color:var(--text-muted)">' + ipShort + '</span>' +
+          '<span style="color:var(--text-muted);margin-left:auto;font-size:11px">' + (e.timestamp||'').slice(0,16) + '</span>' +
+          '</div>';
+      }).join('');
     } else {
-      html += '<p style="color:var(--text-muted);font-size:13px">Nenhum evento</p>';
+      html += '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px"><i class="fas fa-check-circle" style="color:var(--success);font-size:24px;display:block;margin-bottom:8px"></i>Nenhum ataque detectado</div>';
     }
-    html += '</div></div>' +
+    html += '</div></div></div>' +
+
+      '</div>' +
+
+      '<!-- Linha inferior: Usuarios / Sessoes / Auditoria / Backups -->' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">' +
 
       '<!-- Active Users -->' +
-      '<div class="card" style="padding:16px">' +
-      '<h4><i class="fas fa-users"></i> Usuarios</h4>' +
-      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">' +
-      '<table style="width:100%;font-size:12px"><tr><th>Nome</th><th>Role</th><th>MFA</th><th>Acoes</th></tr>';
+      '<div class="card sa-card" style="padding:16px">' +
+      '<h4 style="margin:0 0 8px"><i class="fas fa-users" style="color:var(--primary)"></i> Usuarios</h4>' +
+      '<div id="saUsersBody" style="max-height:200px;overflow-y:auto">' +
+      '<table style="width:100%;font-size:12px"><tr><th style="padding:4px 6px">Nome</th><th style="padding:4px 6px">Role</th><th style="padding:4px 6px">MFA</th><th style="padding:4px 6px">Acoes</th></tr>';
     if (usersData?.rows?.length) {
       html += usersData.rows.map(u =>
-        '<tr><td style="padding:4px">' + (u.name||'') + '</td><td>' + (u.role||'') + '</td><td>' + (u.mfa_enabled ? '<span style="color:var(--success)"><i class="fas fa-check"></i></span>' : '<span style="color:var(--text-muted)"><i class="fas fa-times"></i></span>') + '</td><td>' + (u.action_count||0) + ' acoes</td></tr>'
+        '<tr><td style="padding:4px 6px">' + (u.name||'') + '</td><td style="padding:4px 6px"><span class="badge badge-' + (u.role === 'admin' ? 'success' : 'warning') + '" style="font-size:10px">' + (u.role||'') + '</span></td><td style="padding:4px 6px">' + (u.mfa_enabled ? '<span style="color:var(--success)"><i class="fas fa-check-circle"></i></span>' : '<span style="color:var(--text-muted)"><i class="fas fa-times-circle"></i></span>') + '</td><td style="padding:4px 6px;font-size:11px;color:var(--text-muted)">' + (u.action_count||0) + '</td></tr>'
       ).join('');
     }
     html += '</table></div></div>' +
 
       '<!-- Active Sessions -->' +
-      '<div class="card" style="padding:16px">' +
-      '<h4><i class="fas fa-key"></i> Sessoes Ativas</h4>' +
-      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
+      '<div class="card sa-card" style="padding:16px">' +
+      '<h4 style="margin:0 0 8px"><i class="fas fa-key" style="color:var(--warning)"></i> Sessoes Ativas</h4>' +
+      '<div id="saSessionsBody" style="max-height:200px;overflow-y:auto">';
     if (sessionsData?.rows?.length) {
-      html += '<table style="width:100%;font-size:12px"><tr><th>Usuario</th><th>Expira</th><th>Acao</th></tr>';
+      html += '<table style="width:100%;font-size:12px"><tr><th style="padding:4px 6px">Usuario</th><th style="padding:4px 6px">Expira</th><th style="padding:4px 6px"></th></tr>';
       html += sessionsData.rows.slice(0,10).map(s =>
-        '<tr><td style="padding:4px">' + (s.name||'') + '</td><td>' + (s.expires_at||'').slice(0,16) + '</td><td><button class="btn btn-xs btn-danger revoke-session" data-token="' + s.token + '"><i class="fas fa-times"></i></button></td></tr>'
+        '<tr><td style="padding:4px 6px">' + (s.name||'') + '</td><td style="padding:4px 6px;font-size:11px;color:var(--text-muted)">' + (s.expires_at||'').slice(0,16) + '</td><td style="padding:4px 6px"><button class="btn btn-xs btn-danger revoke-session" data-token="' + s.token + '" title="Revogar"><i class="fas fa-times"></i></button></td></tr>'
       ).join('');
       html += '</table>';
     } else {
-      html += '<p style="color:var(--text-muted);font-size:13px">Nenhuma sessao ativa</p>';
+      html += '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhuma sessao ativa</p>';
     }
     html += '</div></div>' +
-      '</div>' +
 
       '<!-- Audit Log -->' +
-      '<div class="card" style="padding:16px;margin-top:16px">' +
-      '<h4><i class="fas fa-history"></i> Auditoria Recente</h4>' +
-      '<div style="max-height:300px;overflow-y:auto;margin-top:8px">';
+      '<div class="card sa-card" style="padding:16px">' +
+      '<h4 style="margin:0 0 8px"><i class="fas fa-history" style="color:var(--info)"></i> Auditoria Recente</h4>' +
+      '<div id="saAuditBody" style="max-height:200px;overflow-y:auto">';
     if (auditData?.rows?.length) {
-      html += '<table style="width:100%;font-size:12px"><tr><th>Data</th><th>Usuario</th><th>Acao</th><th>Entidade</th><th>IP</th></tr>';
-      html += auditData.rows.map(a =>
-        '<tr><td style="padding:4px;white-space:nowrap">' + (a.timestamp||'').slice(0,16) + '</td><td>' + (a.user_name||'') + '</td><td>' + (a.action||'') + '</td><td>' + (a.entity_type||'') + ' #' + (a.entity_id||'') + '</td><td style="font-size:11px">' + (a.ip_address||'') + '</td></tr>'
+      html += '<table style="width:100%;font-size:12px"><tr><th style="padding:4px 6px">Data</th><th style="padding:4px 6px">Usuario</th><th style="padding:4px 6px">Acao</th></tr>';
+      html += auditData.rows.slice(0,8).map(a =>
+        '<tr><td style="padding:4px 6px;font-size:11px;white-space:nowrap">' + (a.timestamp||'').slice(0,16) + '</td><td style="padding:4px 6px">' + (a.user_name||'') + '</td><td style="padding:4px 6px"><span style="font-size:11px;color:var(--text-muted)">' + (a.action||'') + '</span></td></tr>'
       ).join('');
       html += '</table>';
+    } else {
+      html += '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhum registro</p>';
     }
     html += '</div></div>' +
 
       '<!-- Backups -->' +
-      '<div class="card" style="padding:16px;margin-top:16px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<h4 style="margin:0"><i class="fas fa-database"></i> Backups</h4>' +
-      '<button id="triggerBackupBtn" class="btn btn-primary btn-sm"><i class="fas fa-database"></i> Criar Backup</button>' +
+      '<div class="card sa-card" style="padding:16px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<h4 style="margin:0"><i class="fas fa-database" style="color:var(--success)"></i> Backups</h4>' +
+      '<button id="triggerBackupBtn" class="btn btn-primary btn-sm"><i class="fas fa-database"></i> Criar</button>' +
       '</div>' +
-      '<p style="font-size:12px;color:var(--text-muted);margin:8px 0">Backup automatico a cada 1h (max 48 arquivos)</p>' +
-      '<div style="max-height:200px;overflow-y:auto;margin-top:8px">';
+      '<div id="saBackupsBody" style="max-height:200px;overflow-y:auto">';
     const backupList = await API.get('/api/admin/backups');
     if (backupList?.rows?.length) {
-      html += '<table style="width:100%;font-size:12px"><tr><th>Arquivo</th><th>Tamanho</th><th>Data</th><th>Acao</th></tr>';
-      html += backupList.rows.map(b =>
-        '<tr><td style="padding:4px">' + b.filename + '</td><td>' + (b.size/1024).toFixed(1) + ' KB</td><td>' + b.timestamp + '</td><td><a class="btn btn-xs btn-outline" href="/api/admin/backup/' + b.filename + '" target="_blank"><i class="fas fa-download"></i></a></td></tr>'
+      html += '<table style="width:100%;font-size:12px"><tr><th style="padding:4px 6px">Arquivo</th><th style="padding:4px 6px">Tamanho</th><th style="padding:4px 6px"></th></tr>';
+      html += backupList.rows.slice(0,8).map(b =>
+        '<tr><td style="padding:4px 6px;font-size:11px">' + b.filename + '</td><td style="padding:4px 6px;font-size:11px;color:var(--text-muted)">' + (b.size/1024).toFixed(1) + ' KB</td><td style="padding:4px 6px"><a class="btn btn-xs btn-outline" href="/api/admin/backup/' + b.filename + '" target="_blank" title="Download"><i class="fas fa-download"></i></a></td></tr>'
       ).join('');
       html += '</table>';
     } else {
-      html += '<p style="color:var(--text-muted);font-size:13px">Nenhum backup ainda</p>';
+      html += '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhum backup</p>';
     }
-    html += '</div></div>' +
+    html += '</div></div></div>' +
       '</div>';
     content.innerHTML = html;
+
+    // Iniciar globo SOMENTE na primeira vez (persistente)
+    if (!this._saGlobeState || !document.getElementById('saGlobeCanvas')) {
+      this.startSaGlobe(recentAttacks);
+    }
+
+    // Zoom controls
+    document.getElementById('saZoomIn')?.addEventListener('click', () => {
+      if (this._saGlobeState) {
+        this._saGlobeState.zoomTarget = Math.min(this._saGlobeState.zoomTarget + 0.1, 1.5);
+      }
+    });
+    document.getElementById('saZoomOut')?.addEventListener('click', () => {
+      if (this._saGlobeState) {
+        this._saGlobeState.zoomTarget = Math.max(this._saGlobeState.zoomTarget - 0.1, 0.4);
+      }
+    });
+
+    // Auto-refresh dados a cada 10s (sem recriar o globo)
+    if (this._saTimer) clearInterval(this._saTimer);
+    this._saTimer = setInterval(() => this._saRefreshData(), 10000);
+
+    document.getElementById('saRefreshBtn')?.addEventListener('click', () => {
+      this._saRefreshData();
+    });
+
+    this._saBindEvents();
+  },
+
+  // ─── Atualizar dados sem recriar pagina ───
+
+  async _saRefreshData() {
+    const [summary, eventsData, sessionsData, usersData, auditData] = await Promise.all([
+      API.get('/api/super-admin/security-summary'),
+      API.get('/api/super-admin/security-events'),
+      API.get('/api/super-admin/active-sessions'),
+      API.get('/api/super-admin/users'),
+      API.get('/api/super-admin/audit-log?per_page=20'),
+    ]);
+    if (!summary) return;
+    const dot = document.getElementById('saStatusDot');
+    if (dot) dot.style.background = 'var(--success)';
+
+    // Atualizar cards
+    const vals = document.querySelectorAll('.sa-card-value');
+    if (vals[0]) vals[0].textContent = summary.total_users || 0;
+    if (vals[1]) vals[1].textContent = summary.active_today || 0;
+    if (vals[2]) vals[2].textContent = summary.failed_logins_24h || 0;
+    if (vals[3]) vals[3].textContent = summary.mfa_enabled || 0;
+    if (vals[4]) vals[4].textContent = summary.active_refresh_tokens || 0;
+
+    // Atualizar lista de ataques
+    const eventsList = document.getElementById('saEventsList');
+    if (eventsList) {
+      const attacks = (eventsData?.rows || []).slice(0, 8);
+      if (attacks.length) {
+        eventsList.innerHTML = attacks.map((e, i) => {
+          const ipShort = (e.ip_address||'').split('.').slice(0,2).join('.') + '.x.x';
+          return '<div class="sa-attack-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:var(--danger);flex-shrink:0;animation:glowPulse 1.5s infinite"></span>' +
+            '<span style="color:var(--danger);font-weight:600;min-width:80px">' + (e.event_type||'') + '</span>' +
+            '<span style="color:var(--text-muted)">' + ipShort + '</span>' +
+            '<span style="color:var(--text-muted);margin-left:auto;font-size:11px">' + (e.timestamp||'').slice(0,16) + '</span></div>';
+        }).join('');
+      } else {
+        eventsList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px"><i class="fas fa-check-circle" style="color:var(--success);font-size:24px;display:block;margin-bottom:8px"></i>Nenhum ataque detectado</div>';
+      }
+    }
+
+    // Atualizar contagem de eventos no cabecalho do globo
+    const eventCount = document.querySelector('[class*="saGlobeTitle"]') || document.querySelector('h4 i.fa-globe-americas')?.parentElement?.parentElement?.querySelector('span');
+    // fallback simples
+    const allSpans = document.querySelectorAll('#saGlobeLegend')?.[0]?.previousElementSibling?.querySelectorAll?.('span');
+    // Atualiza via busca generica
+    document.querySelectorAll('[class*="card"] h4 .fa-globe-americas').forEach(icon => {
+      const parent = icon.parentElement?.parentElement;
+      if (parent) {
+        const span = parent.querySelector('span:last-child');
+        if (span) span.textContent = (eventsData?.rows?.length || 0) + ' eventos';
+      }
+    });
+  },
+
+  // ─── Bind eventos que NAO sao recriados ───
+
+  async _saBindEvents() {
     document.getElementById('blockIpBtn')?.addEventListener('click', async () => {
       const ip = document.getElementById('blockIpInput').value.trim();
       if (!ip) return;
@@ -6785,24 +6924,322 @@ const App = {
         const token = btn.dataset.token;
         await API.post('/api/admin/revoke-session', { token });
         this.toast('Sessao revogada', 'info');
-        this.renderSuperAdmin();
       });
     });
-    // Backup controls
     document.getElementById('triggerBackupBtn')?.addEventListener('click', async () => {
       const btn = document.getElementById('triggerBackupBtn');
       btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Backup...';
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criar...';
       const result = await API.post('/api/admin/backup');
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-database"></i> Criar Backup';
+      btn.innerHTML = '<i class="fas fa-database"></i> Criar';
       if (result?.backup) {
         this.toast('Backup criado: ' + result.backup.filename, 'success');
-        this.renderSuperAdmin();
       } else {
         this.toast(result?.error || 'Erro ao criar backup', 'error');
       }
     });
+  },
+
+  // ─── Globo 3D para Super Admin ────────────
+
+  startSaGlobe(attacks) {
+    const canvas = document.getElementById('saGlobeCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const w = canvas.width = Math.min(600, rect.width - 32);
+    const h = canvas.height = 400;
+    const cx = w / 2, cy = h / 2;
+    const baseR = Math.min(cx, cy) * 0.52;
+    this._saGlobeState = { zoomTarget: 1 };
+
+    let t = 0;
+    let attackDots = [];
+    let particles = [];
+    let explosions = [];
+    let beams = [];
+
+    attacks.forEach((a, i) => {
+      const ip = a.ip_address || '0.0.0.0';
+      const hash = ip.split('.').reduce((s, n) => s + parseInt(n || 0), 0);
+      const theta = ((hash * 0.1 + i * 0.7) % 1) * Math.PI;
+      const phi = ((hash * 0.3 + i * 1.3) % 1) * Math.PI * 2;
+      attackDots.push({
+        theta, phi,
+        lat: theta / Math.PI * 180 - 90,
+        lon: phi / Math.PI * 180 - 180,
+        type: a.event_type || 'unknown',
+        severity: a.event_type === 'SQL Injection' ? 'critical' : a.event_type === 'XSS' ? 'high' : 'medium',
+        r: 2 + Math.random() * 2,
+        phase: Math.random() * Math.PI * 2,
+      });
+    });
+
+    if (attackDots.length < 3) {
+      const dl = [
+        { lat: 40.7, lon: -74, type: 'Scan', severity: 'low' },
+        { lat: 51.5, lon: -0.1, type: 'BF', severity: 'medium' },
+        { lat: 35.7, lon: 139.7, type: 'XSS', severity: 'high' },
+        { lat: -23.5, lon: -46.6, type: 'SQLi', severity: 'critical' },
+        { lat: 55.8, lon: 37.6, type: 'Scan', severity: 'low' },
+        { lat: 28.6, lon: 77.2, type: 'BF', severity: 'medium' },
+        { lat: 31.2, lon: 121.5, type: 'XSS', severity: 'high' },
+        { lat: 48.9, lon: 2.3, type: 'Scan', severity: 'low' },
+        { lat: -33.9, lon: 151.2, type: 'XSS', severity: 'high' },
+        { lat: 1.3, lon: 103.8, type: 'BF', severity: 'medium' },
+      ];
+      dl.forEach(l => {
+        const theta = (90 - l.lat) * Math.PI / 180;
+        const phi = l.lon * Math.PI / 180;
+        attackDots.push({ theta, phi, lat: l.lat, lon: l.lon, type: l.type, severity: l.severity, r: 2, phase: Math.random() * Math.PI * 2 });
+      });
+    }
+
+    const sevColors = { critical: '#FF1744', high: '#FF9800', medium: '#FFD600', low: '#00B0FF' };
+
+    function project3d(theta, phi, rotY, rotX, r0) {
+      r0 = r0 || baseR;
+      const x3 = r0 * Math.sin(theta) * Math.cos(phi);
+      const y3 = r0 * Math.cos(theta);
+      const z3 = r0 * Math.sin(theta) * Math.sin(phi);
+      let x = x3, y = y3, z = z3;
+      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      const x1 = x * cosY - z * sinY;
+      const z1 = x * sinY + z * cosY;
+      x = x1; z = z1;
+      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      const y1 = y * cosX - z * sinX;
+      const z2 = y * sinX + z * cosX;
+      y = y1; z = z2;
+      const scale = 90 / (90 + z);
+      return { sx: cx + x * scale, sy: cy + y * scale, z };
+    }
+
+    function addExplosion(sx, sy, color) {
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const speed = 1 + Math.random() * 2;
+        particles.push({
+          x: sx, y: sy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1, decay: 0.02 + Math.random() * 0.03,
+          size: 1.5 + Math.random() * 2,
+          color,
+        });
+      }
+      explosions.push({ x: sx, y: sy, r: 3, life: 1, color });
+    }
+
+    // Estrelas de fundo
+    const stars = [];
+    for (let i = 0; i < 60; i++) {
+      stars.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: 0.3 + Math.random() * 0.7,
+        twinkle: Math.random() * Math.PI * 2,
+      });
+    }
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      t += 0.018;
+
+      const zoom = this._saGlobeState?.zoomTarget || 1;
+      const currentR = baseR * zoom;
+      const rotY = t * 0.35;
+      const rotX = Math.sin(t * 0.12) * 0.15 + 0.05;
+
+      // ── Estrelas ──
+      stars.forEach(s => {
+        const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * 0.5 + s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * alpha, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200,210,255,${alpha * 0.4})`;
+        ctx.fill();
+      });
+
+      // ── Globo base ──
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, currentR + 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(108,92,231,0.03)';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, currentR, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Gradiente interno
+      const ig = ctx.createRadialGradient(cx - currentR * 0.3, cy - currentR * 0.3, 0, cx, cy, currentR);
+      ig.addColorStop(0, 'rgba(20,15,40,0.15)');
+      ig.addColorStop(0.5, 'rgba(10,8,25,0.08)');
+      ig.addColorStop(1, 'rgba(0,0,10,0.02)');
+      ctx.fillStyle = ig;
+      ctx.fillRect(cx - currentR, cy - currentR, currentR * 2, currentR * 2);
+
+      // ── Grade geodesica ──
+      for (let ring = 0; ring < 4; ring++) {
+        const phi = (ring / 4) * Math.PI;
+        ctx.beginPath();
+        for (let a = 0; a <= 36; a++) {
+          const theta = (a / 36) * Math.PI * 2;
+          const p = project3d(theta, phi, rotY, rotX, currentR);
+          a === 0 ? ctx.moveTo(p.sx, p.sy) : ctx.lineTo(p.sx, p.sy);
+        }
+        ctx.strokeStyle = `rgba(108,92,231,${0.04 + 0.04 * Math.sin(t * 0.5 + ring)})`;
+        ctx.lineWidth = 0.4;
+        ctx.stroke();
+      }
+      for (let m = 0; m < 10; m++) {
+        const theta = (m / 10) * Math.PI * 2;
+        ctx.beginPath();
+        for (let a = 0; a <= 24; a++) {
+          const phi = (a / 24) * Math.PI;
+          const p = project3d(theta, phi, rotY, rotX, currentR);
+          a === 0 ? ctx.moveTo(p.sx, p.sy) : ctx.lineTo(p.sx, p.sy);
+        }
+        ctx.strokeStyle = `rgba(108,92,231,${0.04 + 0.03 * Math.sin(t * 0.3 + theta)})`;
+        ctx.lineWidth = 0.4;
+        ctx.stroke();
+      }
+
+      // ── Projetar dots ──
+      const projected = attackDots.map(d => {
+        const p = project3d(d.theta, d.phi, rotY, rotX, currentR);
+        const sz = d.r * (90 / (90 + p.z));
+        return { ...p, r: sz, color: sevColors[d.severity] || '#888', severity: d.severity, d, sz };
+      });
+      projected.sort((a, b) => a.z - b.z);
+
+      // ── Linhas de conexao entre dots com animacao ──
+      for (let i = 0; i < projected.length; i++) {
+        for (let j = i + 1; j < projected.length; j++) {
+          const dx = projected[i].sx - projected[j].sx;
+          const dy = projected[i].sy - projected[j].sy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < currentR * 0.6 && dist > 10) {
+            const avgZ = (projected[i].z + projected[j].z) / 2;
+            const alpha = 0.06 + 0.12 * (1 - (avgZ + currentR) / (currentR * 2));
+            const grad = ctx.createLinearGradient(projected[i].sx, projected[i].sy, projected[j].sx, projected[j].sy);
+            grad.addColorStop(0, projected[i].color + Math.round(alpha * 80).toString(16).padStart(2, '0'));
+            grad.addColorStop(0.5, `rgba(108,92,231,${alpha * 0.4})`);
+            grad.addColorStop(1, projected[j].color + Math.round(alpha * 80).toString(16).padStart(2, '0'));
+            ctx.beginPath();
+            ctx.moveTo(projected[i].sx, projected[i].sy);
+            ctx.lineTo(projected[j].sx, projected[j].sy);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+
+            // Pontos animados nas conexoes (data flow)
+            const flowPos = (t * 0.5 + i + j) % 1;
+            const fx = projected[i].sx + (projected[j].sx - projected[i].sx) * flowPos;
+            const fy = projected[i].sy + (projected[j].sy - projected[i].sy) * flowPos;
+            ctx.beginPath();
+            ctx.arc(fx, fy, 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(0,176,255,${0.3 + 0.4 * Math.sin(t * 3 + i + j)})`;
+            ctx.fill();
+          }
+        }
+      }
+
+      // ── Explosoes e particulas ──
+      explosions = explosions.filter(e => e.life > 0);
+      explosions.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.r * (1 + (1 - e.life) * 6), 0, Math.PI * 2);
+        ctx.strokeStyle = e.color + Math.round(e.life * 60).toString(16).padStart(2, '0');
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        e.life -= 0.04;
+        e.r += 0.3;
+      });
+
+      particles = particles.filter(p => p.life > 0);
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + Math.round(p.life * 200).toString(16).padStart(2, '0');
+        ctx.fill();
+      });
+
+      // ── Dots no globo ──
+      projected.forEach(p => {
+        const pulse = 0.7 + 0.3 * Math.sin(t * 2.5 + p.d.phase);
+        const alpha = 0.4 + 0.6 * (1 - (p.z + currentR) / (currentR * 2));
+        const sz = p.r * pulse;
+
+        // Glow camadas
+        const g1 = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, sz * 8);
+        g1.addColorStop(0, p.color + '40');
+        g1.addColorStop(0.3, p.color + '15');
+        g1.addColorStop(1, p.color + '00');
+        ctx.fillStyle = g1;
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, sz * 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Anel expansivo (severidade critica)
+        if (p.severity === 'critical') {
+          const ringLife = (Math.sin(t * 0.8 + p.d.phase) + 1) / 2;
+          ctx.beginPath();
+          ctx.arc(p.sx, p.sy, sz * (2 + ringLife * 6), 0, Math.PI * 2);
+          ctx.strokeStyle = p.color + Math.round(ringLife * 40).toString(16).padStart(2, '0');
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        // Dot principal
+        const g2 = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, sz);
+        g2.addColorStop(0, '#ffffff');
+        g2.addColorStop(0.3, p.color);
+        g2.addColorStop(1, p.color);
+        ctx.fillStyle = g2;
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.restore();
+
+      // ── Anel orbital externo ──
+      const ringPulse = 0.5 + 0.5 * Math.sin(t * 1.2);
+      ctx.beginPath();
+      ctx.arc(cx, cy, currentR + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(108,92,231,${0.06 + 0.08 * ringPulse})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Orbits
+      for (let o = 0; o < 2; o++) {
+        const angle = t * (o === 0 ? 0.6 : -0.4) + o * Math.PI;
+        const ox = cx + Math.cos(angle) * (currentR + 6);
+        const oy = cy + Math.sin(angle) * (currentR + 6);
+        ctx.beginPath();
+        ctx.arc(ox, oy, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(108,92,231,${0.15 + 0.1 * Math.sin(t * 1.5 + o)})`;
+        ctx.fill();
+      }
+
+      // Gerar explosoes periodicas em dots aleatorios
+      if (attackDots.length > 0 && Math.random() < 0.008) {
+        const idx = Math.floor(Math.random() * projected.length);
+        const p = projected[idx];
+        if (p && p.z > -currentR * 0.5) {
+          addExplosion(p.sx, p.sy, p.color);
+        }
+      }
+
+      requestAnimationFrame(draw);
+    };
+    draw();
   },
 };
 
