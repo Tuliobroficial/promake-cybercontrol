@@ -373,11 +373,11 @@ def get_security_summary():
             "SELECT COUNT(*) as c FROM users WHERE mfa_secret IS NOT NULL AND mfa_secret != ''"
         ).fetchone()["c"]
         result["blocked_ips"] = len([k for k in RATE_LIMIT_STORE if "blocked" in k])
-    _is_pg = bool(os.environ.get("DATABASE_URL"))
-    _exp_cond = "CAST(expires_at AS timestamp) > NOW()" if _is_pg else "expires_at>datetime('now','localtime')"
-    result["active_refresh_tokens"] = db.execute(
-        f"SELECT COUNT(*) as c FROM refresh_tokens WHERE revoked=0 AND {_exp_cond}"
-    ).fetchone()["c"]
+        _is_pg = bool(os.environ.get("DATABASE_URL"))
+        _exp_cond = "CAST(expires_at AS timestamp) > NOW()" if _is_pg else "expires_at>datetime('now','localtime')"
+        result["active_refresh_tokens"] = db.execute(
+            f"SELECT COUNT(*) as c FROM refresh_tokens WHERE revoked=0 AND {_exp_cond}"
+        ).fetchone()["c"]
         result["recent_audit"] = rows_to_list(db.execute(
             "SELECT * FROM audit_log ORDER BY id DESC LIMIT 20"
         ).fetchall())
