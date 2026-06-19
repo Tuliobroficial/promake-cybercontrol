@@ -670,15 +670,19 @@ def init_db():
             except:
                 pass
     db.commit()
-    # Seed admin user if not exists
-    cur = db.execute("SELECT id FROM users WHERE email='admin@promake.com'")
-    if not cur.fetchone():
-        db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Administrador","admin@promake.com",hash_password("admin123"),"admin"))
-        db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Maria Silva","maria@promake.com",hash_password("maria123"),"manager"))
-        db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                   ("Joao Designer","joao@promake.com",hash_password("joao123"),"designer"))
+    # Seed users if not exists
+    _seed_users = [
+        ("Administrador","admin@promake.com","admin123","admin"),
+        ("Maria Silva","maria@promake.com","maria123","manager"),
+        ("Joao Designer","joao@promake.com","joao123","designer"),
+    ]
+    for name, email, pw, role in _seed_users:
+        if not db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+            try:
+                db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
+                           (name, email, hash_password(pw), role))
+            except:
+                pass
     # Seed sample data if empty
     if not db.execute("SELECT id FROM clients").fetchone():
         db.executescript("""
