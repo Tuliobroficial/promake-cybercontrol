@@ -24,7 +24,7 @@ from security_module import (
     generate_recovery_codes, sanitize_html, sanitize_input,
     sanitize_request_data, apply_security_headers,
     generate_csrf_token, require_csrf,
-    rate_limit_advanced, check_rate_limit,
+    rate_limit_advanced, check_rate_limit, get_client_ip,
     invalidate_other_sessions, get_security_summary,
     scan_request_for_attacks, security_monitor_scan,
     require_not_blocked, SECURITY_HEADERS,
