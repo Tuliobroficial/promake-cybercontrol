@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Promake - Sistema de GestÃ£o para AgÃªncias</title>
+<title>Promake - Sistema de Gestão para Agências</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 <style>
@@ -11,7 +11,7 @@
 :root{--primary:#6C5CE7;--primary-dark:#5A4BD1;--bg:#0F0F1A;--bg-card:#1A1A2E;--bg-sidebar:#12121F;--text:#E0E0E0;--text-muted:#8888AA;--border:#2A2A45;--success:#00C853;--warning:#FFD600;--danger:#FF1744;--info:#00B0FF;--radius:12px;--shadow:0 4px 20px rgba(0,0,0,0.3);--sidebar-w:260px;--header-h:60px;--safe-bottom:env(safe-area-inset-bottom,0px)}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;scrollbar-gutter:stable}
 
-/* â”€â”€ Landing Page â”€â”€ */
+/* ── Landing Page ── */
 #landingPage{display:block;position:fixed;inset:0;z-index:9998;overflow-y:auto;overflow-x:clip;background:var(--bg);animation:fadeIn .4s ease;scrollbar-gutter:stable}
 #landingPage.hidden{display:none}
 
@@ -100,7 +100,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .lp-footer a{color:var(--primary);text-decoration:none;transition:opacity .2s}
 .lp-footer a:hover{opacity:.8}
 
-/* â”€â”€ Landing Page Responsive â”€â”€ */
+/* ── Landing Page Responsive ── */
 @media(max-width:768px){
   .lp-nav{padding:12px 16px}
   .lp-nav-brand{font-size:17px}
@@ -704,35 +704,35 @@ body{scrollbar-gutter:stable}
     <div class="lp-hero-glow g2"></div>
     <div id="slideCarousel"></div>
     <div class="lp-hero-default">
-      <div class="lp-hero-badge" id="lp-hero-badge"><i class="fas fa-crown" id="lp-hero-badge-icon"></i> <span id="lp-hero-badge-text">Ecossistema Completo de GestÃ£o</span></div>
+      <div class="lp-hero-badge" id="lp-hero-badge"><i class="fas fa-crown" id="lp-hero-badge-icon"></i> <span id="lp-hero-badge-text">Ecossistema Completo de Gestão</span></div>
       <div class="lp-hero-icon"><i class="fas fa-crown"></i></div>
-      <h1 id="lp-hero-title">GestÃ£o Inteligente para AgÃªncias Digitais, NegÃ³cios e Empresas</h1>
-      <p id="lp-hero-subtitle">CRM, Projetos, Kanban, Financeiro, RelatÃ³rios, Marketing Digital e muito mais em um sÃ³ lugar. O ecossistema definitivo para sua agÃªncia ou empresa crescer.</p>
+      <h1 id="lp-hero-title">Gestão Inteligente para Agências Digitais, Negócios e Empresas</h1>
+      <p id="lp-hero-subtitle">CRM, Projetos, Kanban, Financeiro, Relatórios, Marketing Digital e muito mais em um só lugar. O ecossistema definitivo para sua agência ou empresa crescer.</p>
       <div class="lp-hero-btns">
         <button class="btn btn-primary" onclick="App.openLandingLogin()" id="lp-hero-btn1"><i class="fas fa-rocket"></i> <span>Acessar Agora</span></button>
-        <button class="btn btn-outline" onclick="document.querySelector('.lp-section').scrollIntoView({behavior:'smooth'})" id="lp-hero-btn2"><i class="fas fa-cubes"></i> <span>Conhecer MÃ³dulos</span></button>
+        <button class="btn btn-outline" onclick="document.querySelector('.lp-section').scrollIntoView({behavior:'smooth'})" id="lp-hero-btn2"><i class="fas fa-cubes"></i> <span>Conhecer Módulos</span></button>
       </div>
       <div class="lp-hero-stats">
         <div class="lp-hero-stat"><div class="num" id="lp-stat-1-num">100%</div><div class="label" id="lp-stat-1-label">Gratuito</div></div>
-        <div class="lp-hero-stat"><div class="num" id="lp-stat-2-num">15+</div><div class="label" id="lp-stat-2-label">MÃ³dulos</div></div>
-        <div class="lp-hero-stat"><div class="num" id="lp-stat-3-num">100 GB</div><div class="label" id="lp-stat-3-label">Banda GrÃ¡tis</div></div>
-        <div class="lp-hero-stat"><div class="num" id="lp-stat-4-num">Open Source</div><div class="label" id="lp-stat-4-label">CÃ³digo Aberto</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-2-num">15+</div><div class="label" id="lp-stat-2-label">Módulos</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-3-num">100 GB</div><div class="label" id="lp-stat-3-label">Banda Grátis</div></div>
+        <div class="lp-hero-stat"><div class="num" id="lp-stat-4-num">Open Source</div><div class="label" id="lp-stat-4-label">Código Aberto</div></div>
       </div>
     </div>
   </section>
 
   <section class="lp-section">
-    <h2 class="lp-section-title"><i class="fas fa-cubes"></i> <span id="lp-features-title">Tudo que sua agÃªncia ou empresa precisa</span></h2>
-    <p class="lp-section-sub" id="lp-features-subtitle">MÃ³dulos integrados para gerenciar leads, projetos, equipe, finanÃ§as e operaÃ§Ãµes em um Ãºnico ecossistema.</p>
+    <h2 class="lp-section-title"><i class="fas fa-cubes"></i> <span id="lp-features-title">Tudo que sua agência ou empresa precisa</span></h2>
+    <p class="lp-section-sub" id="lp-features-subtitle">Módulos integrados para gerenciar leads, projetos, equipe, finanças e operações em um único ecossistema.</p>
     <div class="lp-features">
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(108,92,231,0.15);color:var(--primary)"><i class="fas fa-funnel-dollar"></i></div><h4>CRM de Vendas</h4><p>Capture e gerencie leads com funil de vendas visual, conversÃ£o automÃ¡tica em clientes e histÃ³rico completo de negociaÃ§Ãµes.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-tasks"></i></div><h4>Projetos & Tarefas</h4><p>Organize projetos em quadros Kanban com drag-and-drop, prazos, prioridades e atribuiÃ§Ã£o de equipe.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,176,255,0.15);color:var(--info)"><i class="fas fa-dollar-sign"></i></div><h4>GestÃ£o Financeira</h4><p>Controle receitas e despesas, DRE mensal, fluxo de caixa, comissÃµes e contratos com renovaÃ§Ã£o automÃ¡tica.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,214,0,0.15);color:var(--warning)"><i class="fas fa-file-signature"></i></div><h4>Contratos</h4><p>GestÃ£o completa de contratos com renovaÃ§Ã£o periÃ³dica, histÃ³rico de valores e exportaÃ§Ã£o em PDF.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(233,30,99,0.15);color:#E91E63"><i class="fas fa-calendar"></i></div><h4>CalendÃ¡rio Corporativo</h4><p>Agenda de eventos, prazos, reuniÃµes e tarefas com visualizaÃ§Ã£o mensal e lembretes automÃ¡ticos.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,188,212,0.15);color:#00BCD4"><i class="fas fa-chart-bar"></i></div><h4>RelatÃ³rios Gerenciais</h4><p>RelatÃ³rios detalhados de clientes, projetos e financeiro com grÃ¡ficos dinÃ¢micos e exportaÃ§Ã£o CSV.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,152,0,0.15);color:#FF9800"><i class="fas fa-ad"></i></div><h4>Marketing Digital</h4><p>IntegraÃ§Ã£o com Meta Ads e Google Ads para acompanhar campanhas, gastos e ROI em tempo real.</p></div>
-      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-building"></i></div><h4>Empreendimentos</h4><p>GestÃ£o de loteamentos e unidades com controle de vendas, corretores e comissÃµes integrado.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(108,92,231,0.15);color:var(--primary)"><i class="fas fa-funnel-dollar"></i></div><h4>CRM de Vendas</h4><p>Capture e gerencie leads com funil de vendas visual, conversão automática em clientes e histórico completo de negociações.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-tasks"></i></div><h4>Projetos & Tarefas</h4><p>Organize projetos em quadros Kanban com drag-and-drop, prazos, prioridades e atribuição de equipe.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,176,255,0.15);color:var(--info)"><i class="fas fa-dollar-sign"></i></div><h4>Gestão Financeira</h4><p>Controle receitas e despesas, DRE mensal, fluxo de caixa, comissões e contratos com renovação automática.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,214,0,0.15);color:var(--warning)"><i class="fas fa-file-signature"></i></div><h4>Contratos</h4><p>Gestão completa de contratos com renovação periódica, histórico de valores e exportação em PDF.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(233,30,99,0.15);color:#E91E63"><i class="fas fa-calendar"></i></div><h4>Calendário Corporativo</h4><p>Agenda de eventos, prazos, reuniões e tarefas com visualização mensal e lembretes automáticos.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,188,212,0.15);color:#00BCD4"><i class="fas fa-chart-bar"></i></div><h4>Relatórios Gerenciais</h4><p>Relatórios detalhados de clientes, projetos e financeiro com gráficos dinâmicos e exportação CSV.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(255,152,0,0.15);color:#FF9800"><i class="fas fa-ad"></i></div><h4>Marketing Digital</h4><p>Integração com Meta Ads e Google Ads para acompanhar campanhas, gastos e ROI em tempo real.</p></div>
+      <div class="lp-feature"><div class="lp-feature-icon" style="background:rgba(0,200,83,0.15);color:var(--success)"><i class="fas fa-building"></i></div><h4>Empreendimentos</h4><p>Gestão de loteamentos e unidades com controle de vendas, corretores e comissões integrado.</p></div>
     </div>
   </section>
 
@@ -742,24 +742,24 @@ body{scrollbar-gutter:stable}
       <div class="lp-int-item"><i class="fab fa-google"></i> Google Ads</div>
       <div class="lp-int-item"><i class="fab fa-whatsapp"></i> WhatsApp</div>
       <div class="lp-int-item"><i class="fas fa-chart-pie"></i> Looker Studio</div>
-      <div class="lp-int-item"><i class="fas fa-file-pdf"></i> ExportaÃ§Ã£o PDF</div>
+      <div class="lp-int-item"><i class="fas fa-file-pdf"></i> Exportação PDF</div>
     </div>
   </div>
 
   <section class="lp-section" style="padding-top:10px">
-    <h2 class="lp-section-title"><i class="fas fa-boxes"></i> <span id="lp-plans-title">Planos de ServiÃ§o</span></h2>
-    <p class="lp-section-sub" id="lp-plans-subtitle">SoluÃ§Ãµes completas para gestÃ£o de marketing digital, vendas e operaÃ§Ãµes da sua empresa.</p>
+    <h2 class="lp-section-title"><i class="fas fa-boxes"></i> <span id="lp-plans-title">Planos de Serviço</span></h2>
+    <p class="lp-section-sub" id="lp-plans-subtitle">Soluções completas para gestão de marketing digital, vendas e operações da sua empresa.</p>
     <div class="lp-plans">
       <div class="lp-plan">
         <div class="plan-icon"><i class="fas fa-rocket"></i></div>
-        <h4>BÃ¡sico</h4>
-        <div class="price">R$ 1.490<span>/mÃªs</span></div>
-        <div class="desc">GestÃ£o de redes sociais com 8 posts/mÃªs e relatÃ³rio mensal.</div>
+        <h4>Básico</h4>
+        <div class="price">R$ 1.490<span>/mês</span></div>
+        <div class="desc">Gestão de redes sociais com 8 posts/mês e relatório mensal.</div>
         <ul>
-          <li><i class="fas fa-check-circle"></i> 8 posts por mÃªs</li>
-          <li><i class="fas fa-check-circle"></i> RelatÃ³rio mensal de mÃ©tricas</li>
+          <li><i class="fas fa-check-circle"></i> 8 posts por mês</li>
+          <li><i class="fas fa-check-circle"></i> Relatório mensal de métricas</li>
           <li><i class="fas fa-check-circle"></i> Suporte via WhatsApp</li>
-          <li><i class="fas fa-check-circle"></i> Agendamento de conteÃºdo</li>
+          <li><i class="fas fa-check-circle"></i> Agendamento de conteúdo</li>
         </ul>
         <button class="btn btn-outline btn-sm" onclick="App.openLandingLogin()">Consultar</button>
       </div>
@@ -767,28 +767,28 @@ body{scrollbar-gutter:stable}
         <div class="lp-plan-badge">Mais Popular</div>
         <div class="plan-icon"><i class="fas fa-star"></i></div>
         <h4>Profissional</h4>
-        <div class="price">R$ 2.990<span>/mÃªs</span></div>
-        <div class="desc">Redes sociais + trÃ¡fego pago com R$500 em anÃºncios incluÃ­dos.</div>
+        <div class="price">R$ 2.990<span>/mês</span></div>
+        <div class="desc">Redes sociais + tráfego pago com R$500 em anúncios incluídos.</div>
         <ul>
-          <li><i class="fas fa-check-circle"></i> 12 posts por mÃªs</li>
-          <li><i class="fas fa-check-circle"></i> R$500 em anÃºncios incluso</li>
-          <li><i class="fas fa-check-circle"></i> RelatÃ³rio analÃ­tico completo</li>
-          <li><i class="fas fa-check-circle"></i> Suporte prioritÃ¡rio</li>
-          <li><i class="fas fa-check-circle"></i> GestÃ£o de trÃ¡fego pago</li>
+          <li><i class="fas fa-check-circle"></i> 12 posts por mês</li>
+          <li><i class="fas fa-check-circle"></i> R$500 em anúncios incluso</li>
+          <li><i class="fas fa-check-circle"></i> Relatório analítico completo</li>
+          <li><i class="fas fa-check-circle"></i> Suporte prioritário</li>
+          <li><i class="fas fa-check-circle"></i> Gestão de tráfego pago</li>
         </ul>
         <button class="btn btn-primary btn-sm" onclick="App.openLandingLogin()">Contratar</button>
       </div>
       <div class="lp-plan">
         <div class="plan-icon"><i class="fas fa-crown"></i></div>
         <h4>Enterprise</h4>
-        <div class="price">R$ 5.990<span>/mÃªs</span></div>
-        <div class="desc">Pacote completo: social media, trÃ¡fego, design, site e consultoria.</div>
+        <div class="price">R$ 5.990<span>/mês</span></div>
+        <div class="desc">Pacote completo: social media, tráfego, design, site e consultoria.</div>
         <ul>
           <li><i class="fas fa-check-circle"></i> Posts ilimitados</li>
-          <li><i class="fas fa-check-circle"></i> R$1.500 em anÃºncios</li>
-          <li><i class="fas fa-check-circle"></i> CriaÃ§Ã£o de conteÃºdo</li>
+          <li><i class="fas fa-check-circle"></i> R$1.500 em anúncios</li>
+          <li><i class="fas fa-check-circle"></i> Criação de conteúdo</li>
           <li><i class="fas fa-check-circle"></i> Site institucional</li>
-          <li><i class="fas fa-check-circle"></i> Consultoria estratÃ©gica</li>
+          <li><i class="fas fa-check-circle"></i> Consultoria estratégica</li>
           <li><i class="fas fa-check-circle"></i> Suporte 24/7 dedicado</li>
         </ul>
         <button class="btn btn-outline btn-sm" onclick="App.openLandingLogin()">Consultar</button>
@@ -797,14 +797,14 @@ body{scrollbar-gutter:stable}
   </section>
 
   <section class="lp-cta">
-    <h2 id="lp-cta-title"><i class="fas fa-crown" style="color:var(--primary)"></i> Pronto para transformar sua gestÃ£o?</h2>
-    <p id="lp-cta-subtitle">Junte-se a centenas de agÃªncias e empresas que jÃ¡ utilizam o Promake Ecosystem.</p>
-    <button class="btn btn-primary" onclick="App.openLandingLogin()" id="lp-cta-btn"><i class="fas fa-rocket"></i> <span>ComeÃ§ar Agora</span></button>
+    <h2 id="lp-cta-title"><i class="fas fa-crown" style="color:var(--primary)"></i> Pronto para transformar sua gestão?</h2>
+    <p id="lp-cta-subtitle">Junte-se a centenas de agências e empresas que já utilizam o Promake Ecosystem.</p>
+    <button class="btn btn-primary" onclick="App.openLandingLogin()" id="lp-cta-btn"><i class="fas fa-rocket"></i> <span>Começar Agora</span></button>
   </section>
 
   <footer class="lp-footer">
-    <p id="lp-footer-text"><i class="fas fa-crown" style="color:var(--primary)"></i> <strong>Promake Ecosystem</strong> &mdash; GestÃ£o para AgÃªncias Digitais, NegÃ³cios e Empresas &mdash; <span id="lpYear"></span></p>
-    <p style="margin-top:6px;font-size:11px">VersÃ£o 1.0 &mdash; <a href="#" onclick="App.openLandingLogin()">Acessar o Sistema</a></p>
+    <p id="lp-footer-text"><i class="fas fa-crown" style="color:var(--primary)"></i> <strong>Promake Ecosystem</strong> &mdash; Gestão para Agências Digitais, Negócios e Empresas &mdash; <span id="lpYear"></span></p>
+    <p style="margin-top:6px;font-size:11px">Versão 1.0 &mdash; <a href="#" onclick="App.openLandingLogin()">Acessar o Sistema</a></p>
   </footer>
 </div>
 
@@ -812,7 +812,7 @@ body{scrollbar-gutter:stable}
   <div class="login-box">
     <button class="login-close" onclick="App.closeLandingLogin()"><i class="fas fa-times"></i></button>
     <h1><i class="fas fa-crown"></i> Promake</h1>
-    <p>FaÃ§a login no sistema de gestÃ£o</p>
+    <p>Faça login no sistema de gestão</p>
       <form id="loginForm" autocomplete="off">
         <div class="form-group"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="off"></div>
         <div class="form-group">
@@ -824,7 +824,7 @@ body{scrollbar-gutter:stable}
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;color:var(--text-muted)">
         <input type="checkbox" id="rememberUser" style="accent-color:var(--primary)">
-        <label for="rememberUser">Lembrar usuÃ¡rio</label>
+        <label for="rememberUser">Lembrar usuário</label>
       </div>
       <button type="button" class="btn btn-primary" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
       <div style="text-align:center;margin-top:12px">
@@ -832,7 +832,7 @@ body{scrollbar-gutter:stable}
         <span style="color:var(--text-muted);margin:0 8px">|</span>
         <a href="#" onclick="App.openSignup(event)" style="color:var(--primary);font-size:13px;text-decoration:none"><i class="fas fa-user-plus"></i> Criar Conta</a>
       </div>
-      <div class="login-error" id="loginError">Credenciais invÃ¡lidas.</div>
+      <div class="login-error" id="loginError">Credenciais inválidas.</div>
     </form>
   </div>
 </div>
