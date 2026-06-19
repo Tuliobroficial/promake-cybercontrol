@@ -243,7 +243,7 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "SAMEORIGIN",
     "X-XSS-Protection": "0",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' https:; connect-src 'self' https:; frame-src 'self'; media-src 'self'",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://promake-cybercontrol.onrender.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' https:; connect-src 'self' https:; frame-src 'none'; media-src 'self'",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
     "Cache-Control": "no-store, max-age=0",
