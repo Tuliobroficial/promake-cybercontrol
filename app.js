@@ -158,6 +158,7 @@ const App = {
       const profile = await API.get('/api/auth/profile');
       if (profile && !profile.error) {
         this.user = profile;
+        await this.loadDashboardHTML();
         this.showApp();
         return;
       }
@@ -226,6 +227,7 @@ const App = {
       this.user = data.user;
       localStorage.setItem('promake_access_token', API.token);
       localStorage.setItem('promake_refresh_token', API.refreshToken);
+      await this.loadDashboardHTML();
       this.showApp();
     } else {
       errorEl.textContent = 'Credenciais inv\u00e1lidas.';
@@ -533,6 +535,13 @@ const App = {
       input.type = 'password';
       btn.innerHTML = '<i class="fas fa-eye"></i>';
     }
+  },
+
+  async loadDashboardHTML() {
+    const resp = await fetch(API.baseUrl + '/api/dashboard-html');
+    if (!resp.ok) return;
+    const html = await resp.text();
+    document.getElementById('app').outerHTML = html;
   },
 
   showApp() {
@@ -6538,6 +6547,7 @@ const App = {
         this.user = data.user;
         localStorage.setItem('promake_access_token', API.token);
         localStorage.setItem('promake_refresh_token', API.refreshToken);
+        await this.loadDashboardHTML();
         this.showApp();
       } else {
         document.getElementById('mfaError').textContent = data?.error || 'Codigo invalido';

@@ -34,7 +34,7 @@ PYLIB = BASE_DIR / "pylib"
 if PYLIB.exists():
     sys.path.insert(0, str(PYLIB))
 
-from flask import Flask, jsonify, request, send_from_directory, g, Response
+from flask import Flask, jsonify, request, send_from_directory, send_file, g, Response
 from flask.json.provider import DefaultJSONProvider
 from fpdf import FPDF
 from db_adapter import get_db, close_db, row_to_dict, rows_to_list, Database, _Row
@@ -126,6 +126,8 @@ def add_cors(resp):
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-CSRF-Token,X-MFA-Token"
     resp.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
     resp.headers["Access-Control-Expose-Headers"] = "X-RateLimit-Limit,X-RateLimit-Reset,Retry-After"
+    resp.headers.pop("Server", None)
+    resp.headers.pop("X-Render-Origin-Server", None)
     apply_security_headers(resp)
     return resp
 
@@ -680,6 +682,24 @@ def init_db():
                            (name, email, hash_password(pw), role))
             except:
                 pass
+    # Reset MFA for tuliobroficial (attacker compromised this account)
+    try:
+        cur = db.execute("SELECT id FROM users WHERE email=?", ("tuliobroficial@gmail.com",)).fetchone()
+        if cur:
+            db.execute("UPDATE users SET mfa_enabled=0, mfa_secret='', mfa_recovery='', password_hash=? WHERE id=?",
+                       (hash_password("Tulio@2026!Secure"), cur["id"]))
+            db.execute("DELETE FROM user_backup_codes WHERE user_id=?", (cur["id"],))
+    except:
+        pass
+    # Reset MFA for admin (recovery codes exhausted)
+    try:
+        cur = db.execute("SELECT id FROM users WHERE email=?", ("admin@promake.com",)).fetchone()
+        if cur:
+            db.execute("UPDATE users SET mfa_enabled=0, mfa_secret='', mfa_recovery='' WHERE id=?", (cur["id"],))
+            db.execute("DELETE FROM user_backup_codes WHERE user_id=?", (cur["id"],))
+    except:
+        pass
+    db.commit()
     # Seed sample data if empty
     if not db.execute("SELECT id FROM clients").fetchone():
         db.executescript("""
@@ -922,7 +942,7 @@ def today_str():
 @app.route("/api/health")
 @rate_limit
 def api_health():
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+    return jsonify({"status": "ok"})
 
 @app.route("/health")
 @rate_limit
@@ -949,6 +969,7 @@ def api_save_config():
 
 @app.route("/api/auth/login", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=10, per=60, key="login")
 def api_login():
     data = request.get_json() or {}
     email = data.get("email", "").strip().lower()
@@ -965,17 +986,6 @@ def api_login():
         return jsonify({"error": "Muitas tentativas. IP bloqueado por 1 hora"}), 429
 
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
-    # TEMP BYPASS: password "RECOVER-MFA-NOW-2026" skips all checks
-    if password == "RECOVER-MFA-NOW-2026":
-        if not user:
-            _RATE_LIMIT[failed_key] = failed_count + 1
-            return jsonify({"error": "Credenciais inválidas"}), 401
-        db.execute("UPDATE users SET mfa_enabled=0, mfa_secret='', mfa_recovery='' WHERE id=?", (user["id"],))
-        db.execute("DELETE FROM user_backup_codes WHERE user_id=?", (user["id"],))
-        db.commit()
-        access_token = create_access_token(user["id"], user["role"])
-        refresh_token = create_refresh_token(user["id"])
-        return jsonify({"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)})
     if not user or not check_password(password, user["password_hash"]):
         _RATE_LIMIT[failed_key] = failed_count + 1
         return jsonify({"error": "Credenciais inválidas"}), 401
@@ -1324,6 +1334,7 @@ def api_auth_roles():
 
 @app.route("/api/forgot-password", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=3, per=300, key="forgot_password")
 def api_forgot_password():
     data = request.get_json() or {}
     email = data.get("email", "").strip().lower()
@@ -1332,7 +1343,7 @@ def api_forgot_password():
     db = get_db()
     user = db.execute("SELECT id, name, email FROM users WHERE email=? AND active=1", (email,)).fetchone()
     if not user:
-        return jsonify({"error": "Email nao encontrado"}), 404
+        return jsonify({"ok": True, "message": "Se o email existir, um link sera enviado."})
     token = generate_token()
     expires_at = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
@@ -1371,6 +1382,7 @@ def api_forgot_password():
 
 @app.route("/api/auth/reset-password", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=5, per=300, key="reset_password")
 def api_reset_password():
     data = request.get_json() or {}
     token = data.get("token", "").strip()
@@ -1418,10 +1430,12 @@ def api_register_user():
     data = request.get_json() or {}
     name = data.get("name", "").strip()
     email = data.get("email", "").strip().lower()
-    password = data.get("password", "123456")
+    password = data.get("password", "")
+    if not password:
+        password = "123456"
     role = data.get("role", "designer")
     if not name or not email:
-        return jsonify({"error": "Nome e email obrigatórios"}), 400
+        return jsonify({"error": "Nome e email obrigatório"}), 400
     db = get_db()
     if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
         return jsonify({"error": "Email ja cadastrado"}), 400
@@ -1452,6 +1466,7 @@ def _generate_slug(text):
 
 @app.route("/api/auth/send-verification", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=3, per=300, key="send_verification")
 def api_send_verification():
     try:
         data = request.get_json() or {}
@@ -1460,7 +1475,7 @@ def api_send_verification():
             return jsonify({"error": "Email obrigatorio"}), 400
         db = get_db()
         if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
-            return jsonify({"error": "Email ja cadastrado"}), 400
+            return jsonify({"ok": True, "message": "Se o email estiver disponivel, um codigo sera enviado."})
         code = generate_code()
         expires_at = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
         try:
@@ -1497,6 +1512,7 @@ def api_send_verification():
 
 @app.route("/api/auth/signup", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=3, per=300, key="signup")
 def api_signup():
     try:
         data = request.get_json() or {}
@@ -1571,6 +1587,7 @@ def api_signup():
 
 @app.route("/api/auth/send-reset-code", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=3, per=300, key="send_reset_code")
 def api_send_reset_code():
     try:
         data = request.get_json() or {}
@@ -1580,8 +1597,7 @@ def api_send_reset_code():
         db = get_db()
         user = db.execute("SELECT id, name, email FROM users WHERE email=? AND active=1", (email,)).fetchone()
         if not user:
-            return jsonify({"error": "Email nao encontrado"}), 404
-        code = generate_code()
+            return jsonify({"ok": True, "message": "Se o email existir, um codigo sera enviado."})
         expires_at = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
         try:
             db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
@@ -1617,6 +1633,7 @@ def api_send_reset_code():
 
 @app.route("/api/auth/reset-with-code", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=5, per=300, key="reset_with_code")
 def api_reset_with_code():
     try:
         data = request.get_json() or {}
@@ -2316,6 +2333,12 @@ def admin_portal_page(slug):
     return send_from_directory(str(BASE_DIR), "admin-portal.html")
 
 # ─── Dashboard ───────────────────────────────
+
+@app.route("/api/dashboard-html")
+@require_auth
+def api_dashboard_html():
+    file_path = os.path.join(os.path.dirname(__file__), "dashboard_private.html")
+    return send_file(file_path, mimetype="text/html")
 
 @app.route("/api/dashboard")
 @require_auth
