@@ -157,7 +157,7 @@ class Database:
         sql = re.sub(r"datetime\('now'(?:,'[^']+')+\)", self._convert_datetime_now, sql, flags=re.I)
         sql = re.sub(r"date\('now'(?:,'[^']+')+\)", self._convert_date_now, sql, flags=re.I)
         sql = re.sub(r"\bLIKE\b", "ILIKE", sql)
-        sql = re.sub(r"\bINSERT\s+OR\s+IGNORE\b", "INSERT", sql)
+        sql = re.sub(r"\bINSERT\s+OR\s+IGNORE\b(.*)", lambda m: "INSERT" + m.group(1) + " ON CONFLICT DO NOTHING", sql, flags=re.I)
         sql = re.sub(r"\bINSERT\s+OR\s+REPLACE\b", "INSERT", sql)
         sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
         sql = re.sub(r"(\bINTEGER\b)\s+\bAUTOINCREMENT\b", r"\1", sql)
