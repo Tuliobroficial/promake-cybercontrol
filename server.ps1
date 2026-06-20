@@ -8,7 +8,7 @@ if (!(Test-Path $python)) {
 
 Write-Host "`n  Iniciando Promake Server..." -ForegroundColor Cyan
 Write-Host "  Acesse: http://localhost:8081" -ForegroundColor Yellow
-Write-Host "  Login:  admin@promake.com / admin123`n" -ForegroundColor Yellow
+Write-Host "  Login:  tuliobroficial@gmail.com / admin123`n" -ForegroundColor Yellow
 
 & $python $script
 Read-Host "`nPressione Enter para sair"
