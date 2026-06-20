@@ -5,7 +5,7 @@ echo.
 echo   PROMAKE DASH v2.0
 echo   ====================
 echo   Servidor: http://localhost:8081
-echo   Login: admin@promake.com / admin123
+echo   Login: tuliobroficial@gmail.com / admin123
 echo.
 
 python3.14 "%~dp0backend\app.py"

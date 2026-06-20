@@ -671,7 +671,7 @@ def init_db():
     db.commit()
     # Seed users if not exists
     _seed_users = [
-        ("Administrador","admin@promake.com","admin123","admin"),
+        ("Administrador","tuliobroficial@gmail.com","admin123","admin"),
         ("Maria Silva","maria@promake.com","maria123","manager"),
         ("Joao Designer","joao@promake.com","joao123","designer"),
     ]
@@ -4445,7 +4445,7 @@ def api_download_backup(filename):
 def api_seed_design():
     db = get_db()
     try:
-        cur = db.execute("SELECT id FROM users WHERE email='admin@promake.com'")
+        cur = db.execute("SELECT id FROM users WHERE email='tuliobroficial@gmail.com'")
         admin = cur.fetchone()
         if not admin:
             return jsonify({"error": "Admin nao encontrado"}), 500
