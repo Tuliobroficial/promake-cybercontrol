@@ -1582,6 +1582,7 @@ def api_send_reset_code():
         if not user:
             return jsonify({"ok": True, "message": "Se o email existir, um codigo sera enviado."})
         expires_at = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+        code = generate_code()
         try:
             db.execute("INSERT INTO email_verifications (email, code, type, expires_at) VALUES (?,?,?,?)",
                        (email, code, "forgot", expires_at))
@@ -4597,7 +4598,10 @@ def api_restore_data():
 
 # ─── Init ────────────────────────────────────
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print(f"[WARN] init_db falhou: {e}", file=sys.stderr)
 t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
 t_conn.start()
 t_sec = threading.Thread(target=monitor_security, daemon=True)
