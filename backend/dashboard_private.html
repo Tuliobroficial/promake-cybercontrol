@@ -89,17 +89,39 @@
         </div>
         <div class="dashboard-grid" id="dashCards"></div>
         <div class="dashboard-grid" id="dashFinanceCards"></div>
-        <div class="card" style="margin-bottom:16px">
+        <div class="chart-card" style="margin-bottom:16px">
           <h4 style="margin-bottom:12px"><i class="fas fa-chart-bar"></i> Receitas vs Despesas</h4>
-          <canvas id="finChart" style="height:250px"></canvas>
+          <canvas id="revenueChart" style="height:250px"></canvas>
         </div>
-        <div class="card" style="margin-bottom:16px">
-          <h4 style="margin-bottom:12px"><i class="fas fa-users"></i> Leads por Origem</h4>
-          <canvas id="leadChart" style="height:250px"></canvas>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-chart-pie"></i> Projetos por Status</h4>
+          <canvas id="statusChart" style="height:250px"></canvas>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-tasks"></i> Projetos por Tipo</h4>
+          <canvas id="typeChart" style="height:250px"></canvas>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-funnel-dollar"></i> Leads por Status</h4>
+          <canvas id="leadsChart" style="height:250px"></canvas>
         </div>
         <div class="card" style="margin-bottom:16px">
           <h4 style="margin-bottom:12px"><i class="fas fa-calendar-check"></i> Próximos Eventos</h4>
           <div id="dashEventsCompact"></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-clock"></i> Projetos Recentes</h4>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr><th>Projeto</th><th>Cliente</th><th>Status</th><th>Prazo</th><th>Valor</th></tr></thead>
+            <tbody id="dashRecentProjects"></tbody>
+          </table>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px"><i class="fas fa-history"></i> Atividades Recentes</h4>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Descrição</th></tr></thead>
+            <tbody id="dashRecentActivities"></tbody>
+          </table>
         </div>
       </div>
       <div class="page" id="page-leads"><div class="page-header">
