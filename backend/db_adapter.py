@@ -152,8 +152,8 @@ class Database:
         sql = sql.replace("datetime('now','localtime')", "NOW()")
         sql = sql.replace("date('now','localtime')", "CURRENT_DATE")
         sql = re.sub(r"date\('now','start of month'\)", "date_trunc('month', NOW())", sql, flags=re.I)
-        sql = re.sub(r"strftime\('%m',\s*(\w+)\)", r"EXTRACT(MONTH FROM CAST(\1 AS date))", sql, flags=re.I)
-        sql = re.sub(r"strftime\('%Y',\s*(\w+)\)", r"EXTRACT(YEAR FROM CAST(\1 AS date))", sql, flags=re.I)
+        sql = re.sub(r"strftime\('%m',\s*([\w.]+)\)", r"EXTRACT(MONTH FROM CAST(\1 AS date))", sql, flags=re.I)
+        sql = re.sub(r"strftime\('%Y',\s*([\w.]+)\)", r"EXTRACT(YEAR FROM CAST(\1 AS date))", sql, flags=re.I)
         sql = re.sub(r"datetime\('now'(?:,'[^']+')+\)", self._convert_datetime_now, sql, flags=re.I)
         sql = re.sub(r"date\('now'(?:,'[^']+')+\)", self._convert_date_now, sql, flags=re.I)
         sql = re.sub(r"\bLIKE\b", "ILIKE", sql)
@@ -161,7 +161,7 @@ class Database:
         sql = re.sub(r"\bINSERT\s+OR\s+REPLACE\b", "INSERT", sql)
         sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
         sql = re.sub(r"(\bINTEGER\b)\s+\bAUTOINCREMENT\b", r"\1", sql)
-        sql = sql.replace("BLOB", "BYTEA")
+        sql = re.sub(r"\bBLOB\b", "BYTEA", sql)
         return sql
 
     def _convert_datetime_now(self, m):
@@ -193,7 +193,7 @@ class Database:
             if m in ("end of month", "end of year", "end of day"):
                 truncs.append(m.replace("end of ", ""))
                 continue
-            parsed = re.match(r'(-?\d+)\s+(months|days|years|hours|minutes)', m)
+            parsed = re.match(r'(-?\d+)\s+(months|days|years|hours|minutes|month|day|year|hour|minute)', m)
             if parsed:
                 num, unit = parsed.groups()
                 intervals.append(f"INTERVAL '{num} {unit}'")

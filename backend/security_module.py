@@ -364,9 +364,9 @@ def get_security_summary():
         result["active_today"] = db.execute(
             "SELECT COUNT(DISTINCT user_id) as c FROM audit_log WHERE date(timestamp)=?", (today,)
         ).fetchone()["c"]
+        cutoff_24h = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
         result["failed_logins_24h"] = db.execute(
-            """SELECT COUNT(*) as c FROM audit_log
-               WHERE action='login_failed' AND timestamp > datetime('now','-1 day')"""
+            "SELECT COUNT(*) as c FROM audit_log WHERE action='login_failed' AND timestamp > ?", (cutoff_24h,)
         ).fetchone()["c"]
         result["mfa_enabled"] = db.execute(
             "SELECT COUNT(*) as c FROM users WHERE mfa_secret IS NOT NULL AND mfa_secret != ''"
