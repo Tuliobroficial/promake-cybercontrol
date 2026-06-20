@@ -17,12 +17,8 @@ const API = {
           res = await fetch(fullUrl, opts);
         }
       }
-      if (res.status === 401) {
-        return await res.json().catch(() => ({ error: 'Não autorizado' }));
-      }
-      if (res.status === 429) {
-        const errData = await res.json().catch(() => ({ error: 'Muitas tentativas' }));
-        return errData;
+      if (res.status === 401 || res.status === 429) {
+        return await res.json().catch(() => ({ error: 'Erro no servidor' }));
       }
       const ct = res.headers.get('content-type') || '';
       if (ct && !ct.includes('json')) {
@@ -580,10 +576,13 @@ const App = {
   },
 
   async loadDashboardHTML() {
-    const resp = await fetch(API.baseUrl + '/api/dashboard-html');
+    const opts = { headers: {} };
+    if (API.token) opts.headers['Authorization'] = 'Bearer ' + API.token;
+    const resp = await fetch(API.baseUrl + '/api/dashboard-html', opts);
     if (!resp.ok) return;
     const html = await resp.text();
-    document.getElementById('app').outerHTML = html;
+    const app = document.getElementById('app');
+    if (app) app.outerHTML = html;
   },
 
   showApp() {

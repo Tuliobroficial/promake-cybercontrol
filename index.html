@@ -814,11 +814,11 @@ body{scrollbar-gutter:stable}
     <h1><i class="fas fa-crown"></i> Promake</h1>
     <p>Faça login no sistema de gestão</p>
       <form id="loginForm" autocomplete="off" novalidate>
-        <div class="form-group"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="off"></div>
+        <div class="form-group"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="off" onkeydown="if(event.key==='Enter')App.handleLogin()"></div>
         <div class="form-group">
           <label>Senha</label>
           <div style="position:relative">
-            <input type="password" id="loginPassword" placeholder="Digite sua senha" style="padding-right:44px" autocomplete="new-password" data-lpignore="true">
+            <input type="password" id="loginPassword" placeholder="Digite sua senha" style="padding-right:44px" autocomplete="new-password" data-lpignore="true" onkeydown="if(event.key==='Enter')App.handleLogin()">
             <button type="button" id="toggleSenha" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px;font-size:16px" onclick="App.togglePassword()"><i class="fas fa-eye"></i></button>
         </div>
       </div>
@@ -971,7 +971,7 @@ body{scrollbar-gutter:stable}
 </div>
 
 <div id="app"></div>
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 <script>
 if (window.location.search.includes('reset=1')) { localStorage.clear(); window.history.replaceState({}, '', window.location.pathname); }
 try{App.init()}catch(e){document.getElementById('loginError').textContent='Erro ao carregar: '+e.message;document.getElementById('loginError').classList.add('show');console.error(e)}
