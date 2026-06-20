@@ -677,14 +677,29 @@ def init_db():
         ("Maria Silva","maria@promake.com","maria123","manager"),
         ("Joao Designer","joao@promake.com","joao123","designer"),
     ]
+    _count_before = len(db.execute("SELECT id FROM users").fetchall() or [])
     for name, email, pw, role in _seed_users:
         if not db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
             try:
+                h = hash_password(pw)
                 db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                           (name, email, hash_password(pw), role))
-            except:
-                pass
+                           (name, email, h, role))
+                print(f"[seed] Usuario criado: {email} ({role})")
+            except Exception as e:
+                print(f"[seed] ERRO ao criar usuario {email}: {e}", file=sys.stderr)
+                try:
+                    import hashlib
+                    fallback = hashlib.sha256(pw.encode()).hexdigest()
+                    db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
+                               (name, email, fallback, role))
+                    print(f"[seed] Fallback SHA256 usado para {email}")
+                except Exception as e2:
+                    print(f"[seed] Fallback tambem falhou para {email}: {e2}", file=sys.stderr)
     db.commit()
+    _count_after = len(db.execute("SELECT id FROM users").fetchall() or [])
+    print(f"[seed] Usuarios antes: {_count_before}, depois: {_count_after}")
+    if _count_before == _count_after:
+        print(f"[seed] AVISO: Nenhum usuario novo foi inserido!", file=sys.stderr)
     # Seed sample data if empty
     if not db.execute("SELECT id FROM clients").fetchone():
         db.executescript("""
@@ -933,6 +948,23 @@ def api_health():
 @rate_limit
 def health():
     return jsonify({"status": "ok"})
+
+@app.route("/api/init-db", methods=["GET"])
+def api_init_db():
+    global _DB_INIT_DONE
+    _DB_INIT_DONE = False
+    try:
+        init_db()
+        _DB_INIT_DONE = True
+        db = get_db()
+        users = db.execute("SELECT id, email, role FROM users").fetchall()
+        return jsonify({
+            "status": "ok",
+            "message": "Banco inicializado com sucesso",
+            "users": [{"id": u["id"], "email": u["email"], "role": u["role"]} for u in users]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ─── Config Routes ────────────────────────────
 
@@ -4646,8 +4678,11 @@ def ensure_db_initialized():
 try:
     init_db()
     _DB_INIT_DONE = True
+    print("[init] Banco de dados inicializado com sucesso no startup")
 except Exception as e:
-    print(f"[WARN] init_db falhou: {e}", file=sys.stderr)
+    print(f"[init] init_db FALHOU no startup: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
 t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
 t_conn.start()
 t_sec = threading.Thread(target=monitor_security, daemon=True)
