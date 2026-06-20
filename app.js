@@ -17,7 +17,12 @@ const API = {
           res = await fetch(fullUrl, opts);
         }
       }
-      if (res.status === 401) { App.logout(); return null; }
+      if (res.status === 401 && this.token) { App.logout(); return null; }
+      if (res.status === 401 && !this.token) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct && ct.includes('json')) return await res.json();
+        return null;
+      }
       const ct = res.headers.get('content-type') || '';
       if (ct && !ct.includes('json')) {
         const text = await res.text();
@@ -72,7 +77,8 @@ const API = {
           res = await fetch(fullUrl, opts);
         }
       }
-      if (res.status === 401) { App.logout(); return null; }
+      if (res.status === 401 && this.token) { App.logout(); return null; }
+      if (res.status === 401) return null;
       return await res.json();
     } catch(e) {
       App.toast('Erro de conexão com o servidor', 'error');
@@ -174,6 +180,7 @@ const App = {
     document.getElementById('loginBtn').addEventListener('click', h);
     document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') h(); });
     document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') h(); });
+    document.getElementById('loginForm').addEventListener('submit', e => e.preventDefault());
   },
 
   openLandingLogin() {
