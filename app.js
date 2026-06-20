@@ -226,7 +226,7 @@ const App = {
 
   async handleLogin() {
     const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const password = document.getElementById('loginPassword').value.trim();
     const errorEl = document.getElementById('loginError');
     const btn = document.getElementById('loginBtn');
     if (!email || !password) {
@@ -590,7 +590,6 @@ const App = {
     API.userId = this.user?.id;
     document.getElementById('landingPage').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('show');
-    document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.add('active');
     document.getElementById('userName').textContent = this.user?.name || 'Admin';
     const avatarEl = document.getElementById('userAvatar');
@@ -644,7 +643,6 @@ const App = {
     document.getElementById('app').classList.remove('active');
     document.getElementById('landingPage').classList.remove('hidden');
     document.getElementById('loginScreen').classList.remove('show');
-    document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginError').classList.remove('show');
     this.loadPublicSlides();
     this.loadLandingContent();
