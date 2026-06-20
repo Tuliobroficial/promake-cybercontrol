@@ -671,7 +671,7 @@ def init_db():
             except:
                 pass
     db.commit()
-    # Seed users if not exists
+    # Seed users - always ensure admin exists with correct password
     _seed_users = [
         ("Administrador","tuliobroficial@gmail.com","admin123","admin"),
         ("Maria Silva","maria@promake.com","maria123","manager"),
@@ -679,27 +679,38 @@ def init_db():
     ]
     _count_before = len(db.execute("SELECT id FROM users").fetchall() or [])
     for name, email, pw, role in _seed_users:
-        if not db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+        try:
+            h = hash_password(pw)
+        except Exception as e:
+            print(f"[seed] bcrypt falhou para {email}: {e}, usando SHA256", file=sys.stderr)
+            import hashlib
+            h = hashlib.sha256(pw.encode()).hexdigest()
+        existing = db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        if existing:
             try:
-                h = hash_password(pw)
+                db.execute("UPDATE users SET password_hash=?, name=?, role=? WHERE email=?",
+                           (h, name, role, email))
+                print(f"[seed] Senha atualizada: {email}")
+            except Exception as e:
+                print(f"[seed] ERRO ao atualizar {email}: {e}", file=sys.stderr)
+        else:
+            try:
                 db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
                            (name, email, h, role))
                 print(f"[seed] Usuario criado: {email} ({role})")
             except Exception as e:
                 print(f"[seed] ERRO ao criar usuario {email}: {e}", file=sys.stderr)
-                try:
-                    import hashlib
-                    fallback = hashlib.sha256(pw.encode()).hexdigest()
-                    db.execute("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)",
-                               (name, email, fallback, role))
-                    print(f"[seed] Fallback SHA256 usado para {email}")
-                except Exception as e2:
-                    print(f"[seed] Fallback tambem falhou para {email}: {e2}", file=sys.stderr)
     db.commit()
     _count_after = len(db.execute("SELECT id FROM users").fetchall() or [])
     print(f"[seed] Usuarios antes: {_count_before}, depois: {_count_after}")
-    if _count_before == _count_after:
-        print(f"[seed] AVISO: Nenhum usuario novo foi inserido!", file=sys.stderr)
+    # Verify passwords work
+    for email, _, pw, _ in _seed_users:
+        row = db.execute("SELECT id, email, password_hash FROM users WHERE email=?", (email,)).fetchone()
+        if row:
+            pw_ok = check_password(pw, row["password_hash"])
+            print(f"[seed] Verificacao {email}: senha {'OK' if pw_ok else 'FALHOU'}")
+            if not pw_ok:
+                print(f"[seed] ERRO: Senha nao confere para {email}!", file=sys.stderr)
     # Seed sample data if empty
     if not db.execute("SELECT id FROM clients").fetchone():
         db.executescript("""
