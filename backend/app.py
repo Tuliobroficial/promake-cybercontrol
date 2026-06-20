@@ -28,6 +28,8 @@ from security_module import (
     invalidate_other_sessions, get_security_summary,
     scan_request_for_attacks, security_monitor_scan,
     require_not_blocked, SECURITY_HEADERS,
+    block_ip, check_account_lockout, register_failed_login,
+    clear_account_lockout, track_login_device,
 )
 
 PYLIB = BASE_DIR / "pylib"
@@ -958,20 +960,42 @@ def api_login():
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
     client_ip = get_client_ip()
+    user_agent = request.headers.get("User-Agent", "")
     db = get_db()
 
-    # Brute force protection: block IP after 5 failed attempts in 15 min
+    # Per-account lockout check
+    lockout_remaining = check_account_lockout(email)
+    if lockout_remaining > 0:
+        audit_log("login_locked", "user", None, f"Conta temporariamente bloqueada: {email} | IP: {client_ip}")
+        return jsonify({"error": f"Conta temporariamente bloqueada. Tente novamente em {lockout_remaining} minuto(s)."}), 429
+
+    # Progressive delay on failed login
     failed_key = f"login_fail:{client_ip}"
     failed_count = _RATE_LIMIT.get(failed_key, 0)
     if failed_count >= 5:
-        from security_module import block_ip
         block_ip(client_ip, 1)
+        audit_log("ip_blocked", "system", None, f"IP bloqueado por excesso de tentativas: {client_ip} | Email: {email}")
         return jsonify({"error": "Muitas tentativas. IP bloqueado por 1 hora"}), 429
 
+    # Incremental delay to slow brute force
+    if failed_count > 0:
+        delay = min(failed_count * 0.5, 5)
+        time.sleep(delay)
+
     user = db.execute("SELECT * FROM users WHERE email=? AND active=1", (email,)).fetchone()
-    if not user or not check_password(password, user["password_hash"]):
+    if not user or not check_password(password, user["password_hash"] if user else ""):
         _RATE_LIMIT[failed_key] = failed_count + 1
-        return jsonify({"error": "Credenciais inválidas"}), 401
+        lock_mins = register_failed_login(email, client_ip)
+        audit_log("login_failed", "user", user["id"] if user else None,
+                  f"Falha de login: {email} | IP: {client_ip} | UA: {user_agent[:80]}")
+        msg = "Credenciais inválidas."
+        if lock_mins:
+            msg = f"Conta temporariamente bloqueada. Tente novamente em {lock_mins} minuto(s)."
+        return jsonify({"error": msg}), 401
+
+    clear_account_lockout(email)
+    is_new_device = track_login_device(user["id"], client_ip, user_agent)
+
     if not user["password_hash"].startswith("$2"):
         new_hash = hash_password(password)
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
@@ -985,11 +1009,13 @@ def api_login():
             (user["id"], mfa_token, exp)
         )
         db.commit()
-        audit_log("login_mfa_pending", "user", user["id"], "MFA pendente")
+        audit_log("login_mfa_pending", "user", user["id"], f"MFA pendente | IP: {client_ip}")
         return jsonify({"mfa_required": True, "mfa_token": mfa_token, "user": row_to_dict(user)})
+
     access_token = create_access_token(user["id"], user["role"])
     refresh_token = create_refresh_token(user["id"])
-    audit_log("login", "user", user["id"], f"Login: {user['email']}")
+    audit_log("login", "user", user["id"],
+              f"Login: {user['email']} | IP: {client_ip} | Dispositivo: {'novo' if is_new_device else 'conhecido'}")
     result = {"access_token": access_token, "refresh_token": refresh_token, "user": row_to_dict(user)}
     if user["role"] == "client":
         system = db.execute(
@@ -1026,6 +1052,7 @@ def api_refresh():
 
 @app.route("/api/auth/mfa/challenge", methods=["POST"])
 @rate_limit
+@rate_limit_advanced(limit=5, per=60, key="mfa_challenge")
 def api_mfa_challenge():
     data = request.get_json() or {}
     mfa_token = data.get("mfa_token", "")

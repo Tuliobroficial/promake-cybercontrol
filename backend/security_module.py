@@ -416,6 +416,63 @@ def require_not_blocked(f):
         return f(*args, **kwargs)
     return wrapper
 
+# ─── Account lockout (per-user brute force) ──
+
+ACCOUNT_LOCKOUT = {}
+
+def check_account_lockout(email):
+    entry = ACCOUNT_LOCKOUT.get(email)
+    if entry:
+        if time.time() < entry["until"]:
+            return entry["remaining"]
+        del ACCOUNT_LOCKOUT[email]
+    return 0
+
+def register_failed_login(email, ip):
+    now = time.time()
+    entry = ACCOUNT_LOCKOUT.get(email, {"count": 0, "first": now, "until": 0})
+    if now > entry["until"]:
+        entry["count"] = 0
+        entry["first"] = now
+    entry["count"] += 1
+    if entry["count"] >= 5:
+        lock_minutes = min(30, 2 ** (entry["count"] - 5))  # 1min, 2min, 4min, 8min, 16min, 30min...
+        entry["until"] = now + (lock_minutes * 60)
+        entry["count"] = 0
+        ACCOUNT_LOCKOUT[email] = entry
+        return lock_minutes
+    ACCOUNT_LOCKOUT[email] = entry
+    return 0
+
+def clear_account_lockout(email):
+    ACCOUNT_LOCKOUT.pop(email, None)
+
+# ─── Known devices tracking ──────────────────
+
+DEVICE_TRACKING = {}
+
+def track_login_device(user_id, ip, user_agent):
+    try:
+        ua_hash = hashlib.md5((user_agent or "").encode()).hexdigest()[:12]
+        key = f"{user_id}:{ua_hash}"
+        if key not in DEVICE_TRACKING:
+            DEVICE_TRACKING[key] = {"first_seen": time.time(), "ips": set()}
+        DEVICE_TRACKING[key]["ips"].add(ip)
+        if len(DEVICE_TRACKING) > 10000:
+            oldest = sorted(DEVICE_TRACKING.keys(), key=lambda k: DEVICE_TRACKING[k]["first_seen"])[:1000]
+            for k in oldest:
+                del DEVICE_TRACKING[k]
+        return key not in DEVICE_TRACKING or len(DEVICE_TRACKING[key]["ips"]) >= 3
+    except Exception:
+        return False
+
+def is_known_device(user_id, user_agent):
+    try:
+        ua_hash = hashlib.md5((user_agent or "").encode()).hexdigest()[:12]
+        return f"{user_id}:{ua_hash}" in DEVICE_TRACKING
+    except Exception:
+        return True
+
 # ─── Monitoring scan (detect attacks) ────────
 
 SUSPICIOUS_PATTERNS = [
@@ -496,4 +553,7 @@ __all__ = [
     "block_ip", "is_ip_blocked", "require_not_blocked",
     "scan_request_for_attacks", "security_monitor_scan",
     "IP_BLOCKLIST", "RATE_LIMIT_STORE",
+    "check_account_lockout", "register_failed_login",
+    "clear_account_lockout", "track_login_device",
+    "is_known_device", "ACCOUNT_LOCKOUT",
 ]
