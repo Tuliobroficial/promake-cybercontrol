@@ -17,11 +17,12 @@ const API = {
           res = await fetch(fullUrl, opts);
         }
       }
-      if (res.status === 401 && this.token) { App.logout(); return null; }
-      if (res.status === 401 && !this.token) {
-        const ct = res.headers.get('content-type') || '';
-        if (ct && ct.includes('json')) return await res.json();
-        return null;
+      if (res.status === 401) {
+        return await res.json().catch(() => ({ error: 'Não autorizado' }));
+      }
+      if (res.status === 429) {
+        const errData = await res.json().catch(() => ({ error: 'Muitas tentativas' }));
+        return errData;
       }
       const ct = res.headers.get('content-type') || '';
       if (ct && !ct.includes('json')) {
@@ -29,15 +30,15 @@ const API = {
         console.error('[API] Non-JSON response', res.status, text.slice(0,200));
         return null;
       }
-      return await res.json();
+      return await res.json().catch(() => null);
     } catch(e) {
       console.error('[API] Request failed', fullUrl, e);
-      App.toast('Erro de conexão com o servidor', 'error');
       return null;
     }
   },
   async _tryRefresh() {
     if (this._refreshing) return this._refreshing;
+    if (!this.refreshToken) return false;
     this._refreshing = (async () => {
       try {
         const res = await fetch(this.baseUrl + '/api/auth/refresh', {
@@ -45,14 +46,31 @@ const API = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: this.refreshToken })
         });
-        if (!res.ok) return false;
+        if (!res.ok) {
+          this.token = '';
+          this.refreshToken = '';
+          localStorage.removeItem('promake_access_token');
+          localStorage.removeItem('promake_refresh_token');
+          return false;
+        }
         const data = await res.json();
+        if (!data.access_token) {
+          this.token = '';
+          this.refreshToken = '';
+          localStorage.removeItem('promake_access_token');
+          localStorage.removeItem('promake_refresh_token');
+          return false;
+        }
         this.token = data.access_token;
-        this.refreshToken = data.refresh_token;
+        this.refreshToken = data.refresh_token || '';
         localStorage.setItem('promake_access_token', data.access_token);
-        localStorage.setItem('promake_refresh_token', data.refresh_token);
+        localStorage.setItem('promake_refresh_token', data.refresh_token || '');
         return true;
       } catch(e) {
+        this.token = '';
+        this.refreshToken = '';
+        localStorage.removeItem('promake_access_token');
+        localStorage.removeItem('promake_refresh_token');
         return false;
       } finally {
         this._refreshing = null;
@@ -161,13 +179,24 @@ const App = {
     if (accessToken) {
       API.token = accessToken;
       API.refreshToken = refreshToken || '';
-      const profile = await API.get('/api/auth/profile');
-      if (profile && !profile.error) {
-        this.user = profile;
-        await this.loadDashboardHTML();
-        this.showApp();
-        return;
-      }
+      try {
+        const res = await fetch(API.baseUrl + '/api/auth/profile', {
+          headers: { 'Authorization': 'Bearer ' + accessToken }
+        });
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile && !profile.error) {
+            this.user = profile;
+            await this.loadDashboardHTML();
+            this.showApp();
+            return;
+          }
+        }
+      } catch(e) {}
+      API.token = '';
+      API.refreshToken = '';
+      localStorage.removeItem('promake_access_token');
+      localStorage.removeItem('promake_refresh_token');
     }
     this.loadTheme();
     document.getElementById('lpYear').textContent = new Date().getFullYear();
@@ -199,6 +228,7 @@ const App = {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
     if (!email || !password) {
       errorEl.textContent = 'Preencha email e senha.';
       errorEl.classList.add('show'); return;
@@ -208,7 +238,12 @@ const App = {
     } else {
       localStorage.removeItem('promake_email');
     }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Entrando...';
+    errorEl.classList.remove('show');
     const data = await API.post('/api/auth/login', { email, password });
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
     if (data && !data.error) {
       if (data.user?.role === "client" && data.system) {
         const resultHtml =
@@ -237,7 +272,7 @@ const App = {
       await this.loadDashboardHTML();
       this.showApp();
     } else {
-      errorEl.textContent = 'Credenciais inv\u00e1lidas.';
+      errorEl.textContent = (data && data.error) ? data.error : 'Erro de conexão com o servidor.';
       errorEl.classList.add('show');
     }
   },
@@ -592,15 +627,20 @@ const App = {
   },
 
   logout() {
-      if (API.refreshToken) {
-        API.post('/api/auth/logout', { refresh_token: API.refreshToken });
-      }
-      localStorage.removeItem('promake_access_token');
-      localStorage.removeItem('promake_refresh_token');
-      localStorage.removeItem('promake_page');
-      API.token = '';
-      API.refreshToken = '';
-      this.user = null;
+    const rt = API.refreshToken;
+    API.token = '';
+    API.refreshToken = '';
+    this.user = null;
+    localStorage.removeItem('promake_access_token');
+    localStorage.removeItem('promake_refresh_token');
+    localStorage.removeItem('promake_page');
+    if (rt) {
+      fetch(API.baseUrl + '/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt })
+      }).catch(() => {});
+    }
     document.getElementById('app').classList.remove('active');
     document.getElementById('landingPage').classList.remove('hidden');
     document.getElementById('loginScreen').classList.remove('show');
