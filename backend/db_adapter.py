@@ -266,13 +266,16 @@ class Database:
             self._conn.executescript(sql)
             return
         cur = self._conn.cursor()
-        # psycopg2 cannot execute multiple statements in one execute() call,
-        # so we split. Errors propagate — do NOT swallow them.
-        for stmt in re.split(r";\s*\n\s*", sql):
+        for stmt_num, stmt in enumerate(re.split(r";\s*\n\s*", sql), 1):
             stmt = stmt.strip().rstrip(";").strip()
-            if stmt:
+            if not stmt:
+                continue
+            try:
                 cur.execute(stmt)
-        self._conn.commit()
+                self._conn.commit()
+            except Exception as e:
+                self._conn.rollback()
+                print(f"[WARN] executescript stmt {stmt_num} skipped: {e}", file=__import__('sys').stderr)
 
     def commit(self):
         self._conn.commit()

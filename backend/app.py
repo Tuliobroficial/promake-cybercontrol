@@ -956,6 +956,10 @@ def api_save_config():
 @rate_limit
 @rate_limit_advanced(limit=10, per=60, key="login")
 def api_login():
+    # Ensure DB is initialized (retry if startup init failed)
+    if not ensure_db_initialized():
+        return jsonify({"error": "Erro interno do servidor"}), 500
+
     data = request.get_json() or {}
     email = data.get("email", "").strip().lower()
     password = data.get("password", "")
@@ -4622,8 +4626,23 @@ def api_restore_data():
 
 # ─── Init ────────────────────────────────────
 
+_DB_INIT_DONE = False
+
+def ensure_db_initialized():
+    global _DB_INIT_DONE
+    if _DB_INIT_DONE:
+        return True
+    try:
+        init_db()
+        _DB_INIT_DONE = True
+        return True
+    except Exception as e:
+        print(f"[WARN] init_db falhou: {e}", file=sys.stderr)
+        return False
+
 try:
     init_db()
+    _DB_INIT_DONE = True
 except Exception as e:
     print(f"[WARN] init_db falhou: {e}", file=sys.stderr)
 t_conn = threading.Thread(target=monitor_connectivity, daemon=True)
