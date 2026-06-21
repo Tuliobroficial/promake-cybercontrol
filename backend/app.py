@@ -4625,7 +4625,7 @@ def api_restore_data():
     results = {"restored": {}, "errors": []}
     no_id_tables = {"landing_config", "user_backup_codes", "password_resets", "email_verifications"}
     try:
-        order = ["plans","clients","projects","users","leads","contracts","service_orders","tasks","calendar_events","transactions","client_plans","landing_config","visit_counter","design_projects","design_stages","design_cards"]
+        order = ["users","plans","clients","projects","leads","contracts","service_orders","tasks","calendar_events","transactions","client_plans","landing_config","visit_counter","design_projects","design_stages","design_cards"]
         for table in order:
             rows = data.get(table, [])
             if not rows:
