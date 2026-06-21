@@ -1,4 +1,4 @@
-﻿<div id="app">
+<div id="app">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-brand" id="sidebarBrand" onclick="App.uploadLogo()">
       <div class="brand-logo" id="brandLogo"><i class="fas fa-crown"></i></div>
@@ -46,8 +46,8 @@
       <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>Configurações</span></div>
     </div>
   </nav>
-  <div class="main-content">
-    <header class="main-header">
+  <div class="main">
+    <header class="header">
       <div class="header-left">
         <button class="header-btn" id="sidebarToggle" onclick="App.toggleSidebar()"><i class="fas fa-bars"></i></button>
         <div class="header-search" onclick="App.openSearch()">
@@ -70,7 +70,7 @@
         </div>
       </div>
     </header>
-    <div id="pageContent">
+    <div class="content">
       <div class="page active" id="page-dashboard">
         <div class="page-header">
           <h2 class="page-title" id="pageTitle"><i class="fas fa-chart-pie"></i> Dashboard</h2>
