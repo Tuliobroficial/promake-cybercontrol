@@ -2447,6 +2447,14 @@ def api_dashboard():
         "SELECT a.id, a.action, a.entity_type, a.entity_id, a.description, a.created_at, COALESCE(u.name, a.user_name) as user_name FROM activity_log a LEFT JOIN users u ON a.user_id=u.id ORDER BY a.created_at DESC LIMIT 10"
     ).fetchall()
 
+    projects_by_type = db.execute(
+        "SELECT COALESCE(type,'Outros') as type, COUNT(*) as total FROM projects GROUP BY type"
+    ).fetchall()
+
+    leads_by_status = db.execute(
+        "SELECT status, COUNT(*) as total FROM leads GROUP BY status"
+    ).fetchall()
+
     return jsonify({
         "active_clients": active_clients,
         "active_projects": active_projects,
@@ -2459,6 +2467,8 @@ def api_dashboard():
         "revenue_by_month": rows_to_list(revenue_by_month),
         "expenses_by_month": rows_to_list(expenses_by_month),
         "projects_by_status": rows_to_list(projects_by_status),
+        "projects_by_type": rows_to_list(projects_by_type),
+        "leads_by_status": rows_to_list(leads_by_status),
         "recent_projects": rows_to_list(recent_projects),
         "recent_activities": rows_to_list(recent_activities)
     })

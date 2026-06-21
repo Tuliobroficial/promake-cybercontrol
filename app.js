@@ -1365,17 +1365,25 @@ const App = {
         plugins: { legend: { position: 'right', labels: { color: '#8888AA', padding: 12, boxWidth: 12, font: { size: 13 } } } }, cutout: '65%' }
     });
 
+    const typeMap = {};
+    (data.projects_by_type||[]).forEach(p => { typeMap[p.type] = p.total; });
+    const typeLabels = ['Social Media','Trafego Pago','Design Grafico','Desenvolvimento Web','Marketing de Conteudo','Consultoria'];
+    const typeData = typeLabels.map(l => typeMap[l]||0);
     this.chartInstances.type = new Chart(document.getElementById('typeChart'), {
       type: 'bar', data: { labels: ['Social Media','Trafego','Design','Web','Conteudo','Consultoria'],
-        datasets: [{ label: 'Projetos', data: [0,0,0,0,0,0], backgroundColor: '#6C5CE7', borderRadius: 4 }] },
+        datasets: [{ label: 'Projetos', data: typeData, backgroundColor: '#6C5CE7', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { ticks: { color: '#8888AA' }, grid: { display: false } },
                  y: { ticks: { color: '#8888AA' }, grid: { color: 'rgba(42,42,69,0.5)' } } } }
     });
 
+    const leadMap = {};
+    (data.leads_by_status||[]).forEach(l => { leadMap[l.status] = l.total; });
+    const leadLabels = ['novo','contato','qualificado','proposta','convertido','perdido'];
+    const leadData = leadLabels.map(l => leadMap[l]||0);
     this.chartInstances.leads = new Chart(document.getElementById('leadsChart'), {
       type: 'bar', data: { labels: ['Novo','Contato','Qualificado','Proposta','Convertido','Perdido'],
-        datasets: [{ label: 'Leads', data: [0,0,0,0,0,0], backgroundColor: '#00B0FF', borderRadius: 4 }] },
+        datasets: [{ label: 'Leads', data: leadData, backgroundColor: '#00B0FF', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
         scales: { x: { ticks: { color: '#8888AA' }, grid: { display: false } },
                  y: { ticks: { color: '#8888AA' }, grid: { color: 'rgba(42,42,69,0.5)' } } } }
