@@ -3386,12 +3386,14 @@ const App = {
   loadTheme() {
     const theme = localStorage.getItem('promake_theme') || 'dark';
     document.body.classList.toggle('theme-light', theme === 'light');
-    document.getElementById('themeBtn').innerHTML = theme === 'light' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.innerHTML = theme === 'light' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
   },
   toggleTheme() {
     const isLight = document.body.classList.toggle('theme-light');
     localStorage.setItem('promake_theme', isLight ? 'light' : 'dark');
-    document.getElementById('themeBtn').innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     this.toast(isLight ? 'Tema claro ativado' : 'Tema escuro ativado');
   },
 
