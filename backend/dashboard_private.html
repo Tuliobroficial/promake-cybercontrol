@@ -71,6 +71,7 @@
       </div>
     </header>
     <div class="content">
+      <div style="display:none"><span id="settingsUser"></span><div id="finTransactions"></div><div id="finDre"></div><div id="finCommissions"></div><div id="reportOverview"></div><div id="reportClients"></div><div id="reportProjects"></div><div id="reportFinancial"></div></div>
       <div class="page active" id="page-dashboard">
         <div class="page-header">
           <h2 class="page-title" id="pageTitle"><i class="fas fa-chart-pie"></i> Dashboard</h2>
@@ -126,53 +127,80 @@
       </div>
       <div class="page" id="page-leads"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-funnel-dollar"></i> CRM / Leads</h2>
-        <button class="btn btn-primary btn-sm" onclick="App.openLeadModal()"><i class="fas fa-plus"></i> Novo Lead</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="leadSearch" placeholder="Buscar lead..." style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;width:180px" oninput="App.renderLeads()">
+          <select id="leadStatusFilter" onchange="App.renderLeads()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos Status</option><option value="novo">Novo</option><option value="contato">Contato</option><option value="qualificado">Qualificado</option><option value="proposta">Proposta</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select>
+          <select id="leadSourceFilter" onchange="App.renderLeads()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todas Origens</option><option value="website">Site</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="google">Google</option><option value="indicacao">Indicação</option><option value="whatsapp">WhatsApp</option><option value="outros">Outros</option></select>
+          <button class="btn btn-primary btn-sm" onclick="App.openLeadModal()"><i class="fas fa-plus"></i> Novo Lead</button>
+        </div>
       </div>
-      <div class="card"><div id="leadBoard"></div></div></div>
+      <div class="card" style="margin-bottom:16px"><div id="leadFunnel"></div></div>
+      <div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Nome</th><th>Contato</th><th>Empresa</th><th>Origem</th><th>Status</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="leadsTable"></tbody></table></div></div>
       <div class="page" id="page-clients"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-users"></i> Clientes</h2>
-        <button class="btn btn-primary btn-sm" onclick="App.openClientModal()"><i class="fas fa-plus"></i> Novo Cliente</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="clientSearch" placeholder="Buscar cliente..." style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;width:180px" oninput="App.renderClients()">
+          <select id="clientStatusFilter" onchange="App.renderClients()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select>
+          <button class="btn btn-primary btn-sm" onclick="App.openClientModal()"><i class="fas fa-plus"></i> Novo Cliente</button>
+        </div>
       </div>
-      <div class="card"><div id="clientList"></div></div></div>
+      <div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Nome</th><th>Contato</th><th>Empresa</th><th>Status</th><th>Planos</th><th>Ações</th></tr></thead><tbody id="clientsTable"></tbody></table></div></div>
       <div class="page" id="page-projects"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-tasks"></i> Projetos</h2>
-        <button class="btn btn-primary btn-sm" onclick="App.openProjectModal()"><i class="fas fa-plus"></i> Novo Projeto</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="projectSearch" placeholder="Buscar projeto..." style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;width:180px" oninput="App.renderProjects()">
+          <select id="projectStatusFilter" onchange="App.renderProjects()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos Status</option><option value="pending">Pendente</option><option value="active">Em Andamento</option><option value="completed">Concluído</option><option value="atrasado">Atrasado</option></select>
+          <select id="projectTypeFilter" onchange="App.renderProjects()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos Tipos</option><option value="Social Media">Social Media</option><option value="Desenvolvimento Web">Desenvolvimento Web</option><option value="Design Grafico">Design Gráfico</option><option value="Trafego Pago">Tráfego Pago</option><option value="Marketing de Conteudo">Marketing de Conteúdo</option><option value="Consultoria">Consultoria</option></select>
+          <button class="btn btn-primary btn-sm" onclick="App.openProjectModal()"><i class="fas fa-plus"></i> Novo Projeto</button>
+        </div>
       </div>
-      <div class="card"><div id="projectList"></div></div></div>
+      <div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Projeto</th><th>Cliente</th><th>Tipo</th><th>Status</th><th>Prazo</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="projectsTable"></tbody></table></div></div>
       <div class="page" id="page-finance"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-dollar-sign"></i> Financeiro</h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="App.toggleFinVisibility()" id="finToggleBtn" title="Alternar visibilidade dos valores"><i class="fas fa-eye"></i></button>
+          <button class="btn btn-outline btn-sm" onclick="App.toggleFaturamento()" id="finToggleBtn" title="Alternar visibilidade dos valores"><i class="fas fa-eye"></i></button>
           <button class="btn btn-primary btn-sm" onclick="App.openTransactionModal()"><i class="fas fa-plus"></i> Nova Transação</button>
-          <button class="btn btn-outline btn-sm" onclick="App.openFinSummary()"><i class="fas fa-file-invoice"></i> Resumo</button>
           <select id="financePeriod" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
             <option value="month">Este Mês</option>
             <option value="quarter">Este Trimestre</option>
             <option value="year">Este Ano</option>
             <option value="all">Todo Período</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="App.exportFinance()"><i class="fas fa-download"></i> Exportar</button>
         </div>
       </div>
       <div class="cards-grid" id="finCards"></div>
+      <div style="display:none"><span id="finRevenueMonth">0</span><span id="finExpensesMonth">0</span><span id="finProfitMonth">0</span></div>
       <div class="card" style="margin-bottom:16px"><h4 style="margin-bottom:12px"><i class="fas fa-chart-bar"></i> Fluxo Financeiro</h4>
       <canvas id="financeChart" style="height:250px"></canvas></div>
-      <div class="card"><h4 style="margin-bottom:12px"><i class="fas fa-list"></i> Transações</h4><div id="transactionList"></div></div></div>
+      <div class="card" style="margin-bottom:16px">
+        <h4 style="margin-bottom:12px"><i class="fas fa-list"></i> Transações</h4>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input type="text" id="financeSearch" placeholder="Buscar..." style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;width:160px" oninput="App.renderFinance()">
+          <select id="finTypeFilter" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos</option><option value="income">Receitas</option><option value="expense">Despesas</option></select>
+          <select id="finCategoryFilter" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todas Categorias</option></select>
+          <input type="date" id="finStartDate" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+          <input type="date" id="finEndDate" onchange="App.renderFinance()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+        </div>
+        <table style="width:100%;border-collapse:collapse"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="financeTable"></tbody></table>
+      </div></div>
       <div class="page" id="page-contracts"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-file-signature"></i> Contratos</h2>
-        <select id="contractFilter" onchange="App.renderContracts()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="all">Todos</option><option value="active">Ativos</option><option value="expiring">Vencendo</option></select>
-        <button class="btn btn-primary btn-sm" onclick="App.openContractModal()"><i class="fas fa-plus"></i> Novo Contrato</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="contractSearch" placeholder="Buscar contrato..." style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;width:180px" oninput="App.renderContracts()">
+          <select id="contractStatusFilter" onchange="App.renderContracts()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todos</option><option value="active">Ativos</option><option value="expired">Expirados</option><option value="cancelled">Cancelados</option></select>
+          <button class="btn btn-primary btn-sm" onclick="App.openContractModal()"><i class="fas fa-plus"></i> Novo Contrato</button>
+        </div>
       </div>
-      <div class="card"><div id="contractList"></div></div></div>
+      <div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Título</th><th>Cliente</th><th>Valor</th><th>Início</th><th>Término</th><th>Renovação</th><th>Status</th><th>Ações</th></tr></thead><tbody id="contractsTable"></tbody></table></div></div>
       <div class="page" id="page-services"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-clipboard-list"></i> Ordens de Serviço</h2>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="soStatusFilter" onchange="App.renderServices()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="todos">Todas</option><option value="active">Em Andamento</option><option value="pending">Pendentes</option><option value="completed">Concluídas</option><option value="atrasado">Atrasadas</option></select>
+          <select id="soProjectFilter" onchange="App.renderServices()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="">Todos Projetos</option></select>
           <button class="btn btn-primary btn-sm" onclick="App.openSOModal()"><i class="fas fa-plus"></i> Nova OS</button>
-          <select id="soFilter" onchange="App.renderSO()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px"><option value="all">Todas</option><option value="active">Em Andamento</option><option value="pending">Pendentes</option><option value="completed">Concluídas</option></select>
-          <button class="btn btn-outline btn-sm" onclick="App.exportSOExcel()"><i class="fas fa-file-excel"></i> Exportar</button>
         </div>
       </div>
-      <div class="card"><div id="soList"></div></div></div>
+      <div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th>OS</th><th>Projeto</th><th>Prioridade</th><th>Status</th><th>Prazo</th><th>Responsável</th><th>Ações</th></tr></thead><tbody id="servicesTable"></tbody></table></div></div>
       <div class="page" id="page-marketing"><div class="page-header">
         <h2 class="page-title"><i class="fas fa-ad"></i> Marketing</h2>
         <button class="btn btn-outline btn-sm" onclick="App.loadClientManagement()" style="margin-left:auto"><i class="fas fa-user-tie"></i> Gerenciar Clientes</button>

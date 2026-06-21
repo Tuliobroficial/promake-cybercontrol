@@ -369,7 +369,7 @@ const App = {
       return;
     }
     errorEl.style.display = 'none';
-    const data = await API.post('/api/auth/forgot-password', { email });
+    const data = await API.post('/api/forgot-password', { email });
     if (data && !data.error) {
       document.getElementById('forgotStep1').style.display = 'none';
       document.getElementById('forgotStep2').style.display = 'block';
@@ -4020,7 +4020,7 @@ const App = {
 
   async downloadFile(fid) {
     try {
-      const r = await fetch(API.baseUrl + '/api/download/' + fid, {
+      const r = await fetch(API.baseUrl + '/api/files/' + fid + '/download', {
         headers: { 'Authorization': 'Bearer ' + API.token }
       });
       if (!r.ok) { this.toast('Erro ao baixar arquivo', 'error'); return; }
@@ -6986,7 +6986,7 @@ const App = {
     document.querySelectorAll('.revoke-session').forEach(btn => {
       btn.addEventListener('click', async () => {
         const token = btn.dataset.token;
-        await API.post('/api/admin/revoke-session', { token });
+        await API.post('/api/super-admin/revoke-session', { token });
         this.toast('Sessao revogada', 'info');
       });
     });
